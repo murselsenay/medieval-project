@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Prefabs
+  m_EditorClassIdentifier: 
+  m_GroupName: Prefabs
+  m_Data:
+    m_SerializedData: []
+  m_GUID: b03c754a8dee4764ca1334811fd7083d
+  m_SerializeEntries:
+  - m_GUID: 00b79aff112c93e49b73cdc3900264f3
+    m_Address: Knight
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - minion
+    - minion-knight
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1740dbedf6ba0fe48bb357f49bba96a1
+    m_Address: Gold
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - currency
+    - currency-gold
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 25ed11b9a540fc449853cac00a618c90
+    m_Address: Hexagon_Ground
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - hexagon
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7a2f4c52dc43abc4fb05e6d696cb3757
+    m_Address: Mage
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - minion
+    - minion-mage
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8f9914520cf5ba24a83fad4bea7f84bb
+    m_Address: Projectile_Arrow
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - prefabs
+    - projectile
+    - projectile-arrow
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a2a177bf73e7b3b41ac17bd1bbe775a4
+    m_Address: Barbarian
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - minion
+    - minion-barbarian
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c63181f241b72714fbcde0f2d4bfd62a
+    m_Address: Gem
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - currency
+    - currency-gem
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e4c6779ff55451d49aa756ccea2d74c2
+    m_Address: Archer
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - minion
+    - minion-archer
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e67de7fb0865a4d4fbdc77d2e536788e
+    m_Address: Assets/Resource_Moved/Prefabs/Projectiles/Spell_Projectile.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - prefabs
+    - projectile
+    - projectile-spell
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ec3f6de513d99a44a856013e92c124cd
+    m_Address: Main_Tower
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - main-tower
+    - prefabs
+    - tower
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: da15862d053030f42969f3882a7d61c8, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: c2300f62a9aa1bb419f8078286aa64eb, type: 2}
+    - {fileID: 11400000, guid: af50fbb4d404b6c42a83dc9d6b278c14, type: 2}
