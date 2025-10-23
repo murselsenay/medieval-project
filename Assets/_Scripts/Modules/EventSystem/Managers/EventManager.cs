@@ -1,6 +1,8 @@
 using UnityEngine;
 using Modules.Economy.Enums;
 using Modules.WaveSystem.Models;
+using Components.Minions.Controllers;
+using Components.Tiles.Controllers; // added for HexagonController
 
 namespace Modules.EventSystem.Managers
 {
@@ -18,8 +20,17 @@ namespace Modules.EventSystem.Managers
         public delegate void WaveCompleted(int waveIndex, WaveDefinition wave);
         public delegate void AllWavesCompleted();
 
+        // Minion-related delegates
+        public delegate void MinionEvent(MinionController minion);
+
         // Tower click delegate
         public delegate void TowerClicked(int towerId);
+        public delegate void TowerUpgraded(int towerId);
+
+        // Hexagon selected delegate
+        public delegate void HexagonSelected(HexagonController hex);
+        // Hexagon deselected delegate
+        public delegate void HexagonDeselected(HexagonController hex);
         #endregion
 
         #region Events
@@ -34,8 +45,18 @@ namespace Modules.EventSystem.Managers
         public static event WaveCompleted OnWaveCompleted;
         public static event AllWavesCompleted OnAllWavesCompleted;
 
+        // Minion-related events
+        public static event MinionEvent OnMinionSpawned;
+        public static event MinionEvent OnMinionDied;
+
         // Tower clicked event
         public static event TowerClicked OnTowerClicked;
+        public static event TowerUpgraded OnTowerUpgraded;
+
+        // Hexagon selected event
+        public static event HexagonSelected OnHexagonSelected;
+        // Hexagon deselected event
+        public static event HexagonDeselected OnHexagonDeselected;
         #endregion
 
         #region Methods
@@ -80,10 +101,37 @@ namespace Modules.EventSystem.Managers
             OnAllWavesCompleted?.Invoke();
         }
 
+        // Minion-related delegators
+        public static void DelegateMinionSpawned(MinionController minion)
+        {
+            OnMinionSpawned?.Invoke(minion);
+        }
+
+        public static void DelegateMinionDied(MinionController minion)
+        {
+            OnMinionDied?.Invoke(minion);
+        }
+
         // Tower clicked delegator
         public static void DelegateTowerClicked(int towerId)
         {
             OnTowerClicked?.Invoke(towerId);
+        }
+        public static void DelegateTowerUpgraded(int towerId)
+        {
+            OnTowerUpgraded?.Invoke(towerId);
+        }
+
+        // Hexagon selected delegator
+        public static void DelegateHexagonSelected(HexagonController hex)
+        {
+            OnHexagonSelected?.Invoke(hex);
+        }
+
+        // Hexagon deselected delegator
+        public static void DelegateHexagonDeselected(HexagonController hex)
+        {
+            OnHexagonDeselected?.Invoke(hex);
         }
         #endregion
     }

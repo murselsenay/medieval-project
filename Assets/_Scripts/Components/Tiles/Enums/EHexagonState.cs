@@ -4,7 +4,8 @@ namespace Components.Tiles.Enums
     {
         Enabled,
         Spawn,
-        Disabled
+        Disabled,
+        Selected
     }
 
 }

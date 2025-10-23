@@ -25,6 +25,13 @@ MonoBehaviour:
     - minion-knight
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 14bbf2b763bbf8e458be2635a02ae0ae
+    m_Address: Tower_Build_Item
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - prefabs
+    - tower-build-item
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1740dbedf6ba0fe48bb357f49bba96a1
     m_Address: Gold
     m_ReadOnly: 0
@@ -72,6 +79,22 @@ MonoBehaviour:
     - currency-gem
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c9ff3c6fa897e214e85b27d10db655d7
+    m_Address: Area_Projectile
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - prefabs
+    - projectile
+    - projectile-area
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d8d33e7970291214690e9a1026a344d6
+    m_Address: Area_Tower
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - area-tower
+    - prefabs
+    - tower
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e4c6779ff55451d49aa756ccea2d74c2
     m_Address: Archer
     m_ReadOnly: 0
@@ -81,7 +104,7 @@ MonoBehaviour:
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e67de7fb0865a4d4fbdc77d2e536788e
-    m_Address: Assets/Resource_Moved/Prefabs/Projectiles/Spell_Projectile.prefab
+    m_Address: Spell_Projectile
     m_ReadOnly: 0
     m_SerializedLabels:
     - prefabs

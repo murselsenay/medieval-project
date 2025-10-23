@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01d163281ff584a4ca7b156875f0d999, type: 3}
   m_Name: ResourceWarehouse
   m_EditorClassIdentifier: 
+  GrayscaleUIMaterial: {fileID: 2100000, guid: 3e46c288fd61bc442aecfc8ca7b21ea1, type: 2}
   HexagonGrayMaterial: {fileID: 2100000, guid: e414348a660f1d043ba9139653214824, type: 2}
   HexagonGreenMaterial: {fileID: 2100000, guid: 05cf8408712bf3742ab28ba6e779c356,
     type: 2}
   HexagonBrownMaterial: {fileID: 2100000, guid: acb04162dbffe6c40af5692c6ca25c77,
     type: 2}
+  HexagonRedMaterial: {fileID: 2100000, guid: eb42c7785d3390e419e25d60496b5860, type: 2}
   HexagonLightGreenMaterial: {fileID: 2100000, guid: ec032d339ca9a614dabe50499cda88fb,
+    type: 2}
+  HexagonSelectedGreenMaterial: {fileID: 2100000, guid: fb2ed44515f43be4cbc8bd8370eea688,
     type: 2}
   _currencySprites:
     _serializedList:
@@ -25,3 +29,17 @@ MonoBehaviour:
       Value: {fileID: 21300000, guid: 1dbde339fe81f5046aa6a80ab8d00719, type: 3}
     - Key: 1
       Value: {fileID: 21300000, guid: e1833f984e2c10742ad0ac0f78de4cd8, type: 3}
+  _towerSprites:
+    _serializedList:
+    - Key: 1
+      Value: {fileID: 21300000, guid: 578dd08a9177cea428782e1b265278c5, type: 3}
+    - Key: 0
+      Value: {fileID: 21300000, guid: e749fa1504b2fd9409be50800773bf0d, type: 3}
+  _projectileIconSprites:
+    _serializedList:
+    - Key: 0
+      Value: {fileID: 21300000, guid: 139896ae9c7105140bf96a66f05e1c40, type: 3}
+    - Key: 1
+      Value: {fileID: 21300000, guid: 47f4c9a1d571e2145bebbbc207d9195b, type: 3}
+    - Key: 2
+      Value: {fileID: 21300000, guid: e46522e28efe3b849b09ef69fc569232, type: 3}

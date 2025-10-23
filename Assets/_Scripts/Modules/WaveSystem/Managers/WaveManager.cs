@@ -34,10 +34,10 @@ namespace Modules.WaveSystem.Managers
             // Temel Minyon Tanýmlarý
             var baseMinions = new Dictionary<string, MinionData>
     {
-        { MinionKeys.Barbarian, new MinionData(EMinionType.Barbarian, 120f, 1, 10, new GoldReward(3)) },
-        { MinionKeys.Archer, new MinionData(EMinionType.Archer, 80f, 1, 8, new GoldReward(3)) },
-        { MinionKeys.Knight, new MinionData(EMinionType.Knight, 180f, 1, 10, new GoldReward(5)) },
-        { MinionKeys.Mage, new MinionData(EMinionType.Mage, 70f, 1, 12, new GoldReward(4)) }
+        { MinionKeys.Barbarian, new MinionData(EMinionType.Barbarian, 60f, 1, 10, new GoldReward(3)) },
+        { MinionKeys.Archer, new MinionData(EMinionType.Archer, 40f, 1, 8, new GoldReward(3)) },
+        { MinionKeys.Knight, new MinionData(EMinionType.Knight, 90f, 1, 10, new GoldReward(5)) },
+        { MinionKeys.Mage, new MinionData(EMinionType.Mage, 35f, 1, 12, new GoldReward(4)) }
     };
 
             const int totalWaves = 30;
@@ -170,21 +170,54 @@ namespace Modules.WaveSystem.Managers
         {
             if (_controller == null || wave == null) return;
 
-            for (int si = 0; si < wave.SubWaves.Count; si++)
+            // Track active minions spawned during this wave so we can wait until all die
+            var activeMinions = new HashSet<MinionController>();
+
+            // Handlers to modify the set
+            EventManager.MinionEvent onSpawn = (MinionController m) =>
             {
-                var sub = wave.SubWaves[si];
-                if (sub.Minions == null) continue;
+                if (m != null)
+                    activeMinions.Add(m);
+            };
 
-                // total minions in this subwave
-                int total = 0;
-                for (int mi = 0; mi < sub.Minions.Count; mi++) total += sub.Minions[mi].Count;
-                if (total <= 0) continue;
+            EventManager.MinionEvent onDied = (MinionController m) =>
+            {
+                if (m != null)
+                    activeMinions.Remove(m);
+            };
 
-                // pass full subwave to controller so it can spawn based on provided MinionData
-                await _controller.SpawnWaveAsync(sub);
+            EventManager.OnMinionSpawned += onSpawn;
+            EventManager.OnMinionDied += onDied;
 
-                if (sub.WaitMsAfter > 0)
-                    await UniTask.Delay(sub.WaitMsAfter);
+            try
+            {
+                for (int si = 0; si < wave.SubWaves.Count; si++)
+                {
+                    var sub = wave.SubWaves[si];
+                    if (sub.Minions == null) continue;
+
+                    // total minions in this subwave
+                    int total = 0;
+                    for (int mi = 0; mi < sub.Minions.Count; mi++) total += sub.Minions[mi].Count;
+                    if (total <= 0) continue;
+
+                    // pass full subwave to controller so it can spawn based on provided MinionData
+                    await _controller.SpawnWaveAsync(sub);
+
+                    if (sub.WaitMsAfter > 0)
+                        await UniTask.Delay(sub.WaitMsAfter);
+                }
+
+                // Wait until all minions spawned in this wave have died
+                while (activeMinions.Count > 0)
+                {
+                    await UniTask.Yield();
+                }
+            }
+            finally
+            {
+                EventManager.OnMinionSpawned -= onSpawn;
+                EventManager.OnMinionDied -= onDied;
             }
         }
         public static void RequestStartWave()

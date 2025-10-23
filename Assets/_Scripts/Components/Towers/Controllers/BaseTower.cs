@@ -10,6 +10,8 @@ using UnityEngine;
 using Components.Minions.Controllers;
 using Modules.ObjectPoolSystem;
 using Modules.EventSystem.Managers;
+using TMPro;
+using Modules.TowerSystem.Managers;
 
 namespace Components.Towers.Controllers
 {
@@ -17,6 +19,7 @@ namespace Components.Towers.Controllers
     {
         [Header("UI")]
         [SerializeField] private Healthbar _healthbar;
+        [SerializeField] private TMP_Text _levelText;
         [Header("Tower Settings")]
         [SerializeField] private ETowerType _towerType;
         [SerializeField] private RangeCircle _rangeCircle;
@@ -40,6 +43,9 @@ namespace Components.Towers.Controllers
 
         public Transform StartTransform => _startTransform;
 
+        // allow derived towers to disable base auto-targeting
+        protected bool _useAutoTargeting = true;
+
         public virtual void Initialize(TowerData data)
         {
             _towerType = data.TowerType;
@@ -50,6 +56,10 @@ namespace Components.Towers.Controllers
 
             _maxHealth = data.Health;
             _currentHealth = _maxHealth;
+            _levelText.text = TowerManager.GetCurrentLevelInfo(TowerId).Level.ToString();
+
+            _isDead = false;
+
 
             if (_healthbar != null)
             {
@@ -57,11 +67,17 @@ namespace Components.Towers.Controllers
             }
 
             if (_rangeCircle != null)
+            {
                 _rangeCircle.SetRadius(_range);
+                // Ensure the range visual is hidden by default; it will be shown when requested
+                _rangeCircle.SetVisible(false);
+            }
         }
 
         private void Update()
         {
+            if (!_useAutoTargeting) return;
+
             if (_isDead) return;
             if (_cooldownTimer > 0f) _cooldownTimer -= Time.deltaTime;
 
@@ -160,18 +176,15 @@ namespace Components.Towers.Controllers
 
         protected virtual async UniTaskVoid FireAtTarget(Transform target)
         {
-            if (!IsTargetValid(target)) return; // avoid firing at dead/out-of-range
+            if (!IsTargetValid(target)) return;
             await UniTask.Yield();
             Debug.LogWarning($"{nameof(BaseTower)}: FireAtTarget not implemented for tower type {_towerType}.");
         }
 
-        // Called when user clicks the tower's collider in the scene
         private void OnMouseDown()
         {
-            // Only respond if object is active
             if (!gameObject.activeInHierarchy) return;
 
-            // Notify global event manager with this tower's id
             EventManager.DelegateTowerClicked(TowerId);
         }
 
@@ -179,6 +192,29 @@ namespace Components.Towers.Controllers
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(transform.position, _range);
+        }
+        public override void Activate()
+        {
+            base.Activate();
+            EventManager.OnTowerUpgraded += OnTowerUpgraded;
+        }
+        public override void Deactivate()
+        {
+            base.Deactivate();
+            EventManager.OnTowerUpgraded -= OnTowerUpgraded;
+        }
+
+        private void OnTowerUpgraded(int towerId)
+        {
+            if (towerId != TowerId) return;
+            _levelText.text = TowerManager.GetCurrentLevelInfo(TowerId).Level.ToString();
+        }
+
+        // New API: show/hide range visual
+        public void SetRangeVisible(bool visible)
+        {
+            if (_rangeCircle == null) return;
+            _rangeCircle.SetVisible(visible);
         }
     }
 }

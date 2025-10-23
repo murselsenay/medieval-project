@@ -28,6 +28,10 @@ namespace Components.General
             _line.positionCount = _segments + 1;
 
             DrawCircle();
+
+            // keep range hidden by default; will be enabled when requested
+            if (_line != null)
+                _line.enabled = false;
         }
 
         private void DrawCircle()
@@ -48,6 +52,13 @@ namespace Components.General
         {
             _radius = newRadius;
             DrawCircle();
+        }
+
+        // New: control visibility of the rendered range
+        public void SetVisible(bool visible)
+        {
+            if (_line == null) return;
+            _line.enabled = visible;
         }
     }
 }

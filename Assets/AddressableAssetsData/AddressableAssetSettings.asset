@@ -103,6 +103,9 @@ MonoBehaviour:
     - currency-gold
     - currency-gem
     - projectile-spell
+    - area-tower
+    - projectile-area
+    - tower-build-item
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: b844ca58d73858d44ac3ee56f57e01fd, type: 2}

@@ -1,5 +1,6 @@
 using Modules.ObjectPoolSystem;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Components.Minions.Enums;
 using Components.Towers.Controllers;
@@ -7,6 +8,7 @@ using Components.Minions.Models;
 using Modules.RewardSystem.Managers;
 using Modules.EventSystem.Managers;
 using Modules.Economy.Enums;
+using Components.Tiles.Controllers;
 
 namespace Components.Minions.Controllers
 {
@@ -34,6 +36,14 @@ namespace Components.Minions.Controllers
 
         private bool _runningTriggered;
 
+        // Track current hex the minion stands on
+        private HexagonController _currentHex;
+        public HexagonController CurrentHex => _currentHex;
+
+        // Track which hexagons are currently affecting this minion (legacy)
+        private readonly List<HexagonController> _affectedHexes = new List<HexagonController>();
+        public IReadOnlyList<HexagonController> AffectedHexes => _affectedHexes.AsReadOnly();
+
         public EMinionType MinionType => _minionType;
         public Animator Animator => _animator;
         public int Damage => _damage;
@@ -51,26 +61,60 @@ namespace Components.Minions.Controllers
             _isDead = false;
             _isAttacking = false;
             _runningTriggered = false;
+            _affectedHexes.Clear();
+            _currentHex = null;
         }
 
         private void Update()
         {
             if (_isDead) return;
 
-            if (_target == null)
+            // Target yoksa veya deaktif/ölmüþse yeni bir tower bul
+            if (_target == null || !_target.gameObject.activeInHierarchy)
             {
-                SetRunState(false);
-                return;
+                // Sahnede aktif towerlarý bul
+                var towers = GameObject.FindGameObjectsWithTag("Tower");
+                BaseTower newTarget = null;
+                float minDist = float.MaxValue;
+                foreach (var t in towers)
+                {
+                    if (t == null) continue;
+                    var bt = t.GetComponent<BaseTower>();
+                    if (bt == null || !bt.gameObject.activeInHierarchy) continue;
+                    // Minion ölü towerlara saldýrmasýn
+                    var towerDeadProp = bt.GetType().GetProperty("IsDead");
+                    bool isDead = false;
+                    if (towerDeadProp != null)
+                    {
+                        isDead = (bool)towerDeadProp.GetValue(bt);
+                    }
+                    if (isDead) continue;
+                    float dist = (bt.transform.position - transform.position).sqrMagnitude;
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        newTarget = bt;
+                    }
+                }
+                if (newTarget != null)
+                {
+                    SetTarget(newTarget);
+                }
+                else
+                {
+                    // Hiç tower yoksa Victory fonksiyonunu çaðýr
+                    Victory();
+                    SetRunState(false);
+                    return;
+                }
             }
 
-            // ignore vertical difference when calculating distance so spawn height doesn't delay attacks
             var dir = _target.transform.position - transform.position;
             dir.y = 0;
-            var dist = dir.magnitude;
+            var distToTarget = dir.magnitude;
 
-            if (dist > _attackRange)
+            if (distToTarget > _attackRange)
             {
-                // move towards target position but keep current Y to avoid vertical drifting
                 var targetPos = _target.transform.position;
                 targetPos.y = transform.position.y;
                 transform.position = Vector3.MoveTowards(transform.position, targetPos, _moveSpeed * Time.deltaTime);
@@ -79,8 +123,6 @@ namespace Components.Minions.Controllers
             }
             else
             {
-                // Start attacking immediately when in range. Avoid forcing an Idle state first which
-                // can introduce animator transition delays (Exit Time). If already attacking, keep run false.
                 if (!_isAttacking)
                 {
                     StartCoroutine(AttackRoutine());
@@ -90,6 +132,20 @@ namespace Components.Minions.Controllers
                     SetRunState(false);
                 }
             }
+        }
+
+        // Minion zafer fonksiyonu: animasyonu idle'a geçirir, ileride doldurulabilir
+        private void Victory()
+        {
+            if (_animator != null)
+            {
+                _animator.SetTrigger(EMinionAnimationType.Idle.ToString());
+            }
+            else
+            {
+                PlayAnimation(EMinionAnimationType.Idle);
+            }
+            // TODO: Victory davranýþý ileride eklenecek
         }
 
         private void LookAtTarget()
@@ -119,6 +175,33 @@ namespace Components.Minions.Controllers
             }
         }
 
+        private void OnTriggerEnter(Collider other)
+        {
+            // detect if we entered a hex's trigger and register
+            var hex = other.GetComponentInParent<HexagonController>();
+            if (hex != null)
+            {
+                // unregister from previous hex
+                if (_currentHex != null && _currentHex != hex)
+                {
+                    _currentHex.RemoveMinion(this);
+                }
+
+                _currentHex = hex;
+                _currentHex.AddMinion(this);
+            }
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            var hex = other.GetComponentInParent<HexagonController>();
+            if (hex != null && _currentHex == hex)
+            {
+                _currentHex.RemoveMinion(this);
+                _currentHex = null;
+            }
+        }
+
         public void Initialize(MinionData data)
         {
             _minionType = data.MinionType;
@@ -138,19 +221,15 @@ namespace Components.Minions.Controllers
 
             var attackAnim = GetAttackAnimationForType(_minionType);
 
-            // Clear running flags and ensure animator uses trigger-based attack to avoid long idle->attack transitions
             if (_animator != null)
             {
-                // If animator uses an "isRunning" bool, clear it so transitions to Idle don't block
                 if (HasAnimatorBool("isRunning"))
                     _animator.SetBool("isRunning", false);
 
-                // reset run triggers/flags
                 _animator.ResetTrigger(EMinionAnimationType.Run_A.ToString());
                 _animator.ResetTrigger(EMinionAnimationType.Run_B.ToString());
                 _runningTriggered = false;
 
-                // Trigger attack immediately (use trigger similar to MageController)
                 _animator.SetTrigger(attackAnim.ToString());
             }
             else
@@ -174,7 +253,6 @@ namespace Components.Minions.Controllers
 
             _isAttacking = false;
 
-            // After finishing attack, ensure minion returns to Idle if still in range
             if (_target != null && !_isDead)
             {
                 var postDir = _target.transform.position - transform.position;
@@ -183,7 +261,6 @@ namespace Components.Minions.Controllers
                 {
                     if (_animator != null)
                     {
-                        // use trigger for idle
                         _animator.SetTrigger(EMinionAnimationType.Idle.ToString());
                     }
                     else
@@ -233,17 +310,39 @@ namespace Components.Minions.Controllers
             }
         }
 
+        // Add or remove affected hex tracking (legacy kept)
+        public void AddAffectedHex(HexagonController hex, float duration = 2f)
+        {
+            if (hex == null) return;
+            if (!_affectedHexes.Contains(hex))
+                _affectedHexes.Add(hex);
+
+            // schedule removal after duration
+            StartCoroutine(RemoveAffectedHexAfterDelay(hex, duration));
+        }
+
+        public void RemoveAffectedHex(HexagonController hex)
+        {
+            if (hex == null) return;
+            _affectedHexes.Remove(hex);
+        }
+
+        private IEnumerator RemoveAffectedHexAfterDelay(HexagonController hex, float delay)
+        {
+            if (hex == null) yield break;
+            yield return new WaitForSeconds(delay);
+            _affectedHexes.Remove(hex);
+        }
+
         private void Die()
         {
             if (_isDead) return;
             _isDead = true;
 
-            // Stop all ongoing behaviours (e.g., AttackRoutine) to prevent them from forcing Idle
             StopAllCoroutines();
             _isAttacking = false;
             _runningTriggered = false;
 
-            // Clear any animator triggers / booleans that could transition back to Idle or Run
             if (_animator != null)
             {
                 if (HasAnimatorBool("isRunning"))
@@ -260,7 +359,6 @@ namespace Components.Minions.Controllers
                 _animator.ResetTrigger(EMinionAnimationType.Cheer.ToString());
             }
 
-            // Play one of the death animations and remain in that state until deactivation
             PlayAnimation(Random.value > 0.5f ? EMinionAnimationType.Death_A : EMinionAnimationType.Death_B);
 
             if (_rewardAmount > 0)
@@ -268,6 +366,12 @@ namespace Components.Minions.Controllers
                 RewardManager.QueueCurrency(_rewardCurrency, _rewardAmount);
                 EventManager.DelegateSpawnCurrencyRequest(transform, _rewardCurrency, _rewardAmount);
             }
+
+            try
+            {
+                EventManager.DelegateMinionDied(this);
+            }
+            catch { }
 
             StartCoroutine(DelayedDeactivate(2f));
         }
@@ -282,7 +386,6 @@ namespace Components.Minions.Controllers
         {
             if (_animator == null) return;
 
-            // Run animations use triggers to prevent repeated retriggering
             if (animType == EMinionAnimationType.Run_A || animType == EMinionAnimationType.Run_B)
             {
                 if (_runningTriggered) return;
@@ -293,7 +396,6 @@ namespace Components.Minions.Controllers
                 return;
             }
 
-            // Non-run animations: try Play for immediate transition then CrossFade fallback and clear running flag
             _runningTriggered = false;
             try
             {
@@ -340,6 +442,8 @@ namespace Components.Minions.Controllers
             _isDead = false;
             _currentHealth = _maxHealth;
             _runningTriggered = false;
+            _affectedHexes.Clear();
+            if (_currentHex != null) { _currentHex.RemoveMinion(this); _currentHex = null; }
         }
     }
 }

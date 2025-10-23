@@ -19,13 +19,15 @@ using Components.Projectiles.Controllers;
 using Modules.RewardSystem.Models;
 using Modules.WaveSystem.Models;
 using Modules.WaveSystem.Managers;
+using Utilities;
+using Modules.GameState.Managers;
+using Modules.GameState.Enums;
 
 namespace Components.Minions.Controllers
 {
     public class WaveController : MonoBehaviour
     {
         [SerializeField] private HexagonGridController _hexagonGridController;
-        [SerializeField] private string _minionKey = MinionKeys.Barbarian;
         [SerializeField] private Transform _minionParent;
         [SerializeField] private int _spawnCount = 5;
         [SerializeField] private int _spawnDelayMs = 200;
@@ -33,9 +35,15 @@ namespace Components.Minions.Controllers
         [SerializeField] private TMP_Text _waveText;
         [SerializeField] private Transform _wave;
         [SerializeField] private TMP_Text _waveDurationText;
+        [SerializeField] private ButtonAnimate _startWaveButton;
 
-        [Button]
-        public void StartWave()
+        private void Initialize()
+        {
+            SetButtons();
+
+            WaveManager.Initialize(this);
+        }
+        private async void StartWave()
         {
             _wave.transform.localScale = Vector3.zero;
 
@@ -48,23 +56,61 @@ namespace Components.Minions.Controllers
                 Debug.LogWarning($"WaveController: failed to clean projectiles before wave start: {ex.Message}");
             }
 
-            WaveManager.Initialize(this);
+            try
+            {
+                // Ensure no leftover area projectiles finish at the start of a new wave
+                ObjectPool.ReturnAllActiveOfType<AreaProjectile>();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"WaveController: failed to clean area projectiles before wave start: {ex.Message}");
+            }
+
+            // Also clear any stale per-hex minion references
+            ClearAllHexMinionLists();
+
+            // change game state to InWave so UI and interactions are updated
+            GameStateManager.SetState(EGameState.InWave);
 
             WaveManager.StartAllWavesAsync();
+
+            WaveManager.RequestStartWave();
+
+            _startWaveButton.gameObject.SetActive(false);
         }
 
-        [Button]
-        public void RequestStartWave()
+        private void SetButtons()
         {
-            WaveManager.RequestStartWave();
+            _startWaveButton.gameObject.SetActive(true);
+
+            _startWaveButton.RemoveAllListeners();
+            _startWaveButton.AddListener(StartWave);
         }
-        private async void ShowWaveInformation(int waveIndex)
+
+
+        private async void ShowWaveInformation(string text)
         {
-            _waveText.text = $"Wave {waveIndex}";
+            _waveText.text = text;
             _wave.transform.localScale = Vector3.zero;
             _wave.DOScale(1, 0.5f).SetEase(Ease.OutBack);
             await UniTask.Delay(3000);
             _wave.DOScale(0, 0.5f).SetEase(Ease.InBack);
+        }
+
+        private void ClearAllHexMinionLists()
+        {
+            if (_hexagonGridController == null || _hexagonGridController.Hexagons == null) return;
+            var hexes = _hexagonGridController.Hexagons;
+            for (int i = 0; i < hexes.Count; i++)
+            {
+                var hex = hexes[i];
+                if (hex == null) continue;
+                var copy = new List<MinionController>(hex.MinionsOnHex);
+                for (int m = 0; m < copy.Count; m++)
+                {
+                    hex.RemoveMinion(copy[m]);
+                }
+            }
         }
 
         public async UniTask SpawnWaveAsync(SubWave sub)
@@ -78,6 +124,7 @@ namespace Components.Minions.Controllers
                 var entry = sub.Minions[i];
                 for (int c = 0; c < entry.Count; c++) flat.Add(entry);
             }
+
 
             if (flat.Count == 0) return;
 
@@ -124,6 +171,13 @@ namespace Components.Minions.Controllers
                 if (minion == null) continue;
 
                 minion.Initialize(entry.Data);
+
+                // Notify that a minion was spawned so WaveManager can track active minion count
+                try
+                {
+                    Modules.EventSystem.Managers.EventManager.DelegateMinionSpawned(minion);
+                }
+                catch { }
 
                 minion.transform.position = CalculateSpawnPosition(hex, minion);
 
@@ -195,15 +249,47 @@ namespace Components.Minions.Controllers
         }
         private void OnWaveStarted(int waveIndex, WaveDefinition wave)
         {
-            ShowWaveInformation(waveIndex + 1);
+            ShowWaveInformation($"Wave {waveIndex + 1}");
+            // Clean any stale hex-minion mapping just in case
+            ClearAllHexMinionLists();
+        }
+
+        private void OnWaveCompleted(int waveIndex, WaveDefinition wave)
+        {
+            ShowWaveInformation($"Wave Ended");
+            _startWaveButton.gameObject.SetActive(true);
+
+            // set state to Build so player can build
+            GameStateManager.SetState(EGameState.Build);
         }
         private void OnEnable()
         {
+            Initialize();
+
             EventManager.OnWaveStarted += OnWaveStarted;
+            EventManager.OnWaveCompleted += OnWaveCompleted;
+
+            // subscribe to game state changes to update UI
+            GameStateManager.OnStateChanged += OnGameStateChanged;
+
+            // ensure button visibility matches current state
+            OnGameStateChanged(GameStateManager.CurrentState);
         }
         private void OnDisable()
         {
             EventManager.OnWaveStarted -= OnWaveStarted;
+            EventManager.OnWaveCompleted -= OnWaveCompleted;
+
+            GameStateManager.OnStateChanged -= OnGameStateChanged;
+        }
+
+        private void OnGameStateChanged(EGameState state)
+        {
+            // hide start wave button while in wave
+            if (_startWaveButton != null)
+            {
+                _startWaveButton.gameObject.SetActive(state != EGameState.InWave);
+            }
         }
     }
 }

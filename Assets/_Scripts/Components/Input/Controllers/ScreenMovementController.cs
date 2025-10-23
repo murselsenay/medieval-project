@@ -27,6 +27,8 @@ namespace Components.Input.Controllers
         [SerializeField, Range(0.01f, 1f)] private float _dragLerp = 1f;
         [SerializeField] private float _maxDelta = 10f;
 
+        [SerializeField] private bool _active = true; // Hareket aktif mi?
+
         private bool _isPanning;
 
         private Vector3 _lastScreenPos;
@@ -40,16 +42,25 @@ namespace Components.Input.Controllers
                 _camera = Camera.main;
         }
 
+        public bool Active
+        {
+            get => _active;
+            set => _active = value;
+        }
+
         private void Update()
         {
-            HandleMouse();
-            HandleTouch();
-
-            if (!_isPanning && _useInertia && _inertiaVelocity.sqrMagnitude > _inertiaThreshold * _inertiaThreshold)
+            // Awake ve ilk kurulum her zaman çalýþmalý, sadece input ve inertia iþlemleri _active ile kontrol edilmeli
+            if (_active)
             {
-                ApplyInertia();
-            }
+                HandleMouse();
+                HandleTouch();
 
+                if (!_isPanning && _useInertia && _inertiaVelocity.sqrMagnitude > _inertiaThreshold * _inertiaThreshold)
+                {
+                    ApplyInertia();
+                }
+            }
             EnforceBoundsImmediate();
         }
 

@@ -1,5 +1,6 @@
 using Components.Projectiles.Enums;
 using Components.Towers.Enums;
+using Scriptables.Singletons;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -15,8 +16,9 @@ namespace Components.Towers.Models
         public float ProjectileRange;
         public float ProjectileCooldown;
         public float ProjectileSpeed;
-
-        public TowerData(ETowerType towerType, float health, EProjectileType projectileType, float projectileDamage, float projectileRange, float projectileCooldown, float projectileSpeed)
+        public int BuildingCost;
+        public Sprite Sprite => ResourceWarehouse.Instance.GetTowerSprite(TowerType);
+        public TowerData(ETowerType towerType, float health, EProjectileType projectileType, float projectileDamage, float projectileRange, float projectileCooldown, float projectileSpeed, int buildingCost)
         {
             TowerType = towerType;
             Health = health;
@@ -25,25 +27,19 @@ namespace Components.Towers.Models
             ProjectileRange = projectileRange;
             ProjectileCooldown = projectileCooldown;
             ProjectileSpeed = projectileSpeed;
+            BuildingCost = buildingCost;
         }
     }
-
-    // Progression rules for towers. Each field represents the per-level change.
-    // Values can be zero if that stat should not change on upgrade.
     public struct TowerProgressionData
     {
-        // Optional identifier to link progression datasets with towers explicitly.
-        // If 0 the system may fall back to using GameObject instance ids.
         public int Id;
         public int MaxLevel;
         public float HealthPerLevel;
         public float DamagePerLevel;
         public float RangePerLevel;
-        // Positive value means cooldown increases each level; negative means it decreases (i.e. fires faster).
         public float CooldownChangePerLevel;
         public float ProjectileSpeedPerLevel;
 
-        // Existing constructor kept for backward compatibility (Id will be 0)
         public TowerProgressionData(int maxLevel, float healthPerLevel, float damagePerLevel, float rangePerLevel, float cooldownChangePerLevel, float projectileSpeedPerLevel)
         {
             Id = 0;
@@ -55,7 +51,6 @@ namespace Components.Towers.Models
             ProjectileSpeedPerLevel = projectileSpeedPerLevel;
         }
 
-        // New constructor allowing explicit Id
         public TowerProgressionData(int id, int maxLevel, float healthPerLevel, float damagePerLevel, float rangePerLevel, float cooldownChangePerLevel, float projectileSpeedPerLevel)
         {
             Id = id;
@@ -68,7 +63,6 @@ namespace Components.Towers.Models
         }
     }
 
-    // Unified info for a specific level: computed TowerData and a DPS value for UI
     public struct TowerLevelInfo
     {
         public int Level;

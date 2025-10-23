@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Components.Towers.Models;
 using Cysharp.Threading.Tasks;
@@ -5,19 +6,25 @@ using UnityEngine;
 using Components.Constants;
 using Components.Towers.Controllers;
 using Modules.ObjectPoolSystem;
+using Modules.Economy.Managers;
+using Modules.Economy.Enums;
+using Modules.EventSystem.Managers;
+using Components.Towers.Enums;
 
 namespace Modules.TowerSystem.Managers
 {
     public static class TowerManager
     {
-        // Manage tower progression rules per tower id and track levels per tower id
         private static readonly Dictionary<int, int> _towerLevels = new Dictionary<int, int>();
         private static readonly Dictionary<int, TowerProgressionData> _progressions = new Dictionary<int, TowerProgressionData>();
         private static readonly Dictionary<int, TowerData> _towerBaseDatas = new Dictionary<int, TowerData>();
         private static TowerProgressionData _defaultProgression;
         private static bool _hasDefaultProgression = false;
 
-        // Keep a default progression (optional) for towers that don't have a specific progression set.
+        // default buildable tower datas (by type)
+        private static readonly Dictionary<ETowerType, TowerData> _defaultTowerDatas = new Dictionary<ETowerType, TowerData>();
+        private static bool _hasDefaultTowerDatas = false;
+
         public static void InitializeDefaults()
         {
             _defaultProgression = new TowerProgressionData(
@@ -29,9 +36,44 @@ namespace Modules.TowerSystem.Managers
                 projectileSpeedPerLevel: 0f
             );
             _hasDefaultProgression = true;
+
+            InitializeDefaultTowerDatas();
         }
 
-        // Assign a progression dataset for a specific tower id
+        private static void InitializeDefaultTowerDatas()
+        {
+            if (_hasDefaultTowerDatas) return;
+
+            // Main tower
+            var main = new TowerData(
+                ETowerType.Main,
+                health: 300f,
+                projectileType: Components.Projectiles.Enums.EProjectileType.Arrow,
+                projectileDamage: 50f,
+                projectileRange: 5f,
+                projectileCooldown: 1f,
+                projectileSpeed: 15f,
+                buildingCost: 12
+            );
+
+            // Area tower
+            var area = new TowerData(
+                ETowerType.Area,
+                health: 150f,
+                projectileType: Components.Projectiles.Enums.EProjectileType.Area,
+                projectileDamage: 25f,
+                projectileRange: 3f,
+                projectileCooldown: 0.5f,
+                projectileSpeed: 5f,
+                buildingCost: 9
+            );
+
+            _defaultTowerDatas[ETowerType.Main] = main;
+            _defaultTowerDatas[ETowerType.Area] = area;
+
+            _hasDefaultTowerDatas = true;
+        }
+
         public static void SetProgressionForTower(int towerId, TowerProgressionData progression)
         {
             _progressions[towerId] = progression;
@@ -58,7 +100,6 @@ namespace Modules.TowerSystem.Managers
             _towerLevels[towerId] = level;
         }
 
-        // Check if tower can upgrade using its current stored level
         public static bool CanUpgrade(int towerId)
         {
             int currentLevel = GetLevelForTower(towerId);
@@ -68,7 +109,12 @@ namespace Modules.TowerSystem.Managers
                 prog = _defaultProgression;
             }
 
-            return currentLevel < prog.MaxLevel;
+            if (currentLevel >= prog.MaxLevel) return false;
+
+            int cost = GetNextUpgradeCost(towerId);
+            if (cost <= 0) return false;
+            int playerGold = CurrencyManager.GetAmount(ECurrencyType.Gold);
+            return playerGold >= cost;
         }
 
         public static bool UpgradeTower(int towerId)
@@ -81,49 +127,113 @@ namespace Modules.TowerSystem.Managers
             }
 
             if (level >= prog.MaxLevel) return false;
+
+            int cost = GetNextUpgradeCost(towerId);
+            if (cost > 0)
+            {
+                if (!CurrencyManager.TryConsume(ECurrencyType.Gold, cost))
+                    return false;
+            }
+
             level++;
             _towerLevels[towerId] = level;
+
+            EventManager.DelegateTowerUpgraded(towerId);
+
             return true;
         }
-
-        // Helper to compute DPS (damage per second) from TowerData
-        private static float ComputeDPS(TowerData data)
+        public static int GetNextUpgradeCost(int towerId)
         {
-            // Avoid division by zero; if cooldown is <= 0 use damage as fallback
-            if (data.ProjectileCooldown <= 0f) return data.ProjectileDamage;
-            return data.ProjectileDamage / data.ProjectileCooldown;
+            int currentLevel = GetLevelForTower(towerId);
+
+            TowerProgressionData effectiveProg = default;
+            if (_progressions.TryGetValue(towerId, out var prog)) effectiveProg = prog;
+            else if (_hasDefaultProgression) effectiveProg = _defaultProgression;
+
+            if (!effectiveProg.Equals(default(TowerProgressionData)))
+            {
+                if (currentLevel >= effectiveProg.MaxLevel) return 0;
+            }
+
+            const int baseCost = 3;
+            // level1 -> 3, level2 -> 6, etc.
+            return baseCost * currentLevel;
         }
 
-        // Calculates the stat values at a specific level based on stored base data + progression for the specified tower id
+        private static float RoundUpToHalf(float value)
+        {
+            return (float)(Math.Ceiling(value * 2.0) / 2.0);
+        }
+
+        private static float ComputeDPS(TowerData data)
+        {
+            float dps;
+            if (data.ProjectileCooldown <= 0f) dps = data.ProjectileDamage;
+            else dps = data.ProjectileDamage / data.ProjectileCooldown;
+            return RoundUpToHalf(dps);
+        }
+
         public static TowerData GetTowerDataAtLevel(int towerId, int level)
         {
             if (!_towerBaseDatas.TryGetValue(towerId, out var baseData))
             {
-                // No base data registered for this tower id; return an empty/default TowerData
                 return default;
             }
 
             if (!_progressions.TryGetValue(towerId, out var prog))
             {
-                if (!_hasDefaultProgression) return baseData;
+                if (!_hasDefaultProgression)
+                {
+                    // return rounded base data
+                    return new TowerData(
+                        baseData.TowerType,
+                        RoundUpToHalf(baseData.Health),
+                        baseData.ProjectileType,
+                        RoundUpToHalf(baseData.ProjectileDamage),
+                        RoundUpToHalf(baseData.ProjectileRange),
+                        RoundUpToHalf(baseData.ProjectileCooldown),
+                        RoundUpToHalf(baseData.ProjectileSpeed),
+                        baseData.BuildingCost
+                    );
+                }
                 prog = _defaultProgression;
             }
 
             int levelDelta = level - 1;
-            if (levelDelta <= 0) return baseData;
+            if (levelDelta <= 0)
+            {
+                return new TowerData(
+                    baseData.TowerType,
+                    RoundUpToHalf(baseData.Health),
+                    baseData.ProjectileType,
+                    RoundUpToHalf(baseData.ProjectileDamage),
+                    RoundUpToHalf(baseData.ProjectileRange),
+                    RoundUpToHalf(baseData.ProjectileCooldown),
+                    RoundUpToHalf(baseData.ProjectileSpeed),
+                    baseData.BuildingCost
+                );
+            }
 
+            // compute raw values
+            float health = baseData.Health + prog.HealthPerLevel * levelDelta;
+            float damage = baseData.ProjectileDamage + prog.DamagePerLevel * levelDelta;
+            float range = baseData.ProjectileRange + prog.RangePerLevel * levelDelta;
+            float cooldown = baseData.ProjectileCooldown + prog.CooldownChangePerLevel * levelDelta;
+            float speed = baseData.ProjectileSpeed + prog.ProjectileSpeedPerLevel * levelDelta;
+
+            // round each stat up to nearest 0.5
             return new TowerData(
                 baseData.TowerType,
-                baseData.Health + prog.HealthPerLevel * levelDelta,
+                RoundUpToHalf(health),
                 baseData.ProjectileType,
-                baseData.ProjectileDamage + prog.DamagePerLevel * levelDelta,
-                baseData.ProjectileRange + prog.RangePerLevel * levelDelta,
-                baseData.ProjectileCooldown + prog.CooldownChangePerLevel * levelDelta,
-                baseData.ProjectileSpeed + prog.ProjectileSpeedPerLevel * levelDelta
+                RoundUpToHalf(damage),
+                RoundUpToHalf(range),
+                RoundUpToHalf(cooldown),
+                RoundUpToHalf(speed),
+                baseData.BuildingCost
             );
         }
 
-        // Returns full computed stats for current level including DPS (uses stored base data)
         public static TowerLevelInfo GetCurrentLevelInfo(int towerId)
         {
             if (!_towerBaseDatas.TryGetValue(towerId, out var baseData))
@@ -137,7 +247,6 @@ namespace Modules.TowerSystem.Managers
             return new TowerLevelInfo(level, data, dps);
         }
 
-        // Returns info for the next level. If already max level or no progression, returns current level info.
         public static TowerLevelInfo GetNextLevelInfo(int towerId)
         {
             if (!_towerBaseDatas.TryGetValue(towerId, out var baseData))
@@ -150,7 +259,6 @@ namespace Modules.TowerSystem.Managers
             bool hasProg = _progressions.TryGetValue(towerId, out var prog);
             if (!hasProg && !_hasDefaultProgression)
             {
-                // No progression; return current
                 return GetCurrentLevelInfo(towerId);
             }
 
@@ -166,11 +274,8 @@ namespace Modules.TowerSystem.Managers
             return new TowerLevelInfo(nextLevel, nextData, nextDps);
         }
 
-        // Create a tower at a world position. Returns the created BaseTower or null.
-        // Towers will use the provided progression.Id if set; otherwise the tower's GameObject instance id is used as the tower id.
         public static async UniTask<BaseTower> CreateTowerAt(Transform parent, Vector3 position, string poolKey, TowerData baseData, TowerProgressionData? progression = null)
         {
-            // Ensure object pool is initialized externally.
             BaseTower tower = null;
             try
             {
@@ -182,16 +287,12 @@ namespace Modules.TowerSystem.Managers
 
             if (tower == null) return null;
 
-            // Initialize tower data
             tower.Initialize(baseData);
 
-            // Force tower world Y so base sits at Y = 1 (use tower half-height to position pivot)
             tower.gameObject.transform.position = new Vector3(position.x, 1f, position.z);
 
-            // ensure tag
             try { tower.gameObject.tag = GameObjectTags.Tower; } catch { }
 
-            // determine tower id
             int id = tower.gameObject.GetInstanceID();
 
             if (progression.HasValue)
@@ -204,22 +305,18 @@ namespace Modules.TowerSystem.Managers
                 }
                 else
                 {
-                    // progression provided but no explicit id -> use gameobject id
                     prog.Id = id;
                     SetProgressionForTower(id, prog);
                 }
             }
             else
             {
-                // No progression supplied: use default progression and register under tower gameobject id
                 if (!_hasDefaultProgression) InitializeDefaults();
                 SetProgressionForTower(id, _defaultProgression);
             }
 
-            // store progression id on the tower instance for external linking
             tower.TowerId = id;
 
-            // store base data for this tower id so later queries can omit baseData arg
             _towerBaseDatas[id] = baseData;
 
             SetLevelForTower(id, 1);
@@ -227,11 +324,23 @@ namespace Modules.TowerSystem.Managers
             return tower;
         }
 
-        // Overload: create tower at a hexagon transform (uses transform.position)
         public static UniTask<BaseTower> CreateTowerAt(Transform parent, Transform hexTransform, string poolKey, TowerData baseData, TowerProgressionData? progression = null)
         {
             if (hexTransform == null) return UniTask.FromResult<BaseTower>(null);
             return CreateTowerAt(parent, hexTransform.position, poolKey, baseData, progression);
+        }
+
+        // New: expose default buildable tower datas
+        public static IReadOnlyCollection<TowerData> GetBuildableTowers()
+        {
+            if (!_hasDefaultTowerDatas) InitializeDefaultTowerDatas();
+            return _defaultTowerDatas.Values;
+        }
+
+        public static bool TryGetDefaultTowerData(ETowerType type, out TowerData data)
+        {
+            if (!_hasDefaultTowerDatas) InitializeDefaultTowerDatas();
+            return _defaultTowerDatas.TryGetValue(type, out data);
         }
     }
 }

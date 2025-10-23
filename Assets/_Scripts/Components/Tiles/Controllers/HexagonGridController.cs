@@ -4,6 +4,9 @@ using Modules.ObjectPoolSystem;
 using NaughtyAttributes;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using Components.Tiles.Enums;
+
 namespace Components.Tiles.Controllers
 {
     public class HexagonGridController : MonoBehaviour
@@ -32,6 +35,37 @@ namespace Components.Tiles.Controllers
         private void Start()
         {
             SpawnGridButton();
+        }
+
+        private void Update()
+        {
+            // Only react on left mouse down and when not clicking UI
+            if (!UnityEngine.Input.GetMouseButtonDown(0)) return;
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
+            // Raycast to see if a hexagon was clicked
+            Ray ray = Camera.main != null ? Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition) : new Ray();
+            if (Physics.Raycast(ray, out var hit, 100f))
+            {
+                var hex = hit.collider.GetComponentInParent<HexagonController>();
+                if (hex != null)
+                {
+                    // if clicked hex is not enabled (e.g. disabled or spawn) and it's not the currently selected one, clear current selection
+                    if (hex.State != EHexagonState.Enabled && hex != HexagonController.CurrentlySelected)
+                    {
+                        if (HexagonController.CurrentlySelected != null)
+                        {
+                            HexagonController.CurrentlySelected.Deselect();
+                        }
+                    }
+
+                    // clicked a hexagon -> do nothing further (hex's own OnMouseDown will handle enabled selection)
+                    return;
+                }
+            }
+
+            // Do not deselect when clicking empty space (to avoid tower colliders blocking clicks).
+            // Selection will only be cleared when user clicks a disabled/spawn hexagon.
         }
 
         [Button]
@@ -66,7 +100,7 @@ namespace Components.Tiles.Controllers
 
             int placed = 0;
 
-            var center = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder, "hexagon");
+            var center = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder);
             if (center != null)
             {
                 center.transform.localPosition = Vector3.zero;
@@ -92,11 +126,12 @@ namespace Components.Tiles.Controllers
                 for (int side = 0; side < 6; side++)
                 {
                     int steps = radius;
+
                     for (int step = 0; step < steps; step++)
                     {
                         if (placed >= count) break;
 
-                        var ctrl = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder, "hexagon");
+                        var ctrl = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder);
                         if (ctrl != null)
                         {
                             ctrl.transform.localPosition = pos;
@@ -135,7 +170,7 @@ namespace Components.Tiles.Controllers
 
             await ObjectPool.InitAsync();
 
-            var center = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder, "hexagon");
+            var center = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder);
             if (center != null)
             {
                 center.transform.localPosition = Vector3.zero;
@@ -156,7 +191,7 @@ namespace Components.Tiles.Controllers
                     int steps = radius;
                     for (int step = 0; step < steps; step++)
                     {
-                        var ctrl = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder, "hexagon");
+                        var ctrl = await ObjectPool.GetObjectAsync<HexagonController>(_hexagonHolder);
                         if (ctrl != null)
                         {
                             ctrl.transform.localPosition = pos;
@@ -197,6 +232,74 @@ namespace Components.Tiles.Controllers
             Sequence seq = DOTween.Sequence();
             seq.Append(t.DOLocalMove(finalPos, 0.35f).SetEase(Ease.OutBack));
             seq.Join(t.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack));
+        }
+
+        public List<HexagonController> GetNeighborsByIndex(int index, int count = 3)
+        {
+            var result = new List<HexagonController>();
+            if (index < 0 || index >= _spawned.Count) return result;
+            if (_positions == null || _positions.Length < 6) return result;
+
+            var center = _spawned[index];
+            if (center == null) return result;
+
+            Vector3 centerLocal = GetLocalPosition(center.transform);
+
+            for (int i = 0; i < _positions.Length && result.Count < count; i++)
+            {
+                Vector3 neighborLocal = centerLocal + _positions[i];
+                var neighbor = FindHexagonByLocalPosition(neighborLocal);
+                if (neighbor != null)
+                {
+                    result.Add(neighbor);
+                }
+            }
+
+            return result;
+        }
+
+        public List<HexagonController> GetNeighborsByTransform(Transform hexTransform, int count = 3)
+        {
+            var result = new List<HexagonController>();
+            if (hexTransform == null) return result;
+
+            int idx = _spawned.FindIndex(h => h != null && h.transform == hexTransform);
+            if (idx >= 0)
+            {
+                return GetNeighborsByIndex(idx, count);
+            }
+
+            Vector3 localPos = GetLocalPosition(hexTransform);
+
+            var center = FindHexagonByLocalPosition(localPos);
+            if (center == null) return result;
+
+            int centerIdx = _spawned.IndexOf(center);
+            if (centerIdx < 0) return result;
+
+            return GetNeighborsByIndex(centerIdx, count);
+        }
+
+        private Vector3 GetLocalPosition(Transform t)
+        {
+            if (_hexagonHolder == null || t == null) return Vector3.zero;
+            if (t.parent == _hexagonHolder) return t.localPosition;
+            // convert world position to holder local
+            return _hexagonHolder.InverseTransformPoint(t.position);
+        }
+
+        private HexagonController FindHexagonByLocalPosition(Vector3 localPos)
+        {
+            const float threshold = 0.25f;
+            for (int i = 0; i < _spawned.Count; i++)
+            {
+                var h = _spawned[i];
+                if (h == null) continue;
+                Vector3 hLocal = GetLocalPosition(h.transform);
+                if (Vector3.Distance(hLocal, localPos) <= threshold)
+                    return h;
+            }
+            return null;
         }
     }
 }

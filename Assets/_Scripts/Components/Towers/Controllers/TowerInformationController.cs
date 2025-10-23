@@ -6,6 +6,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Modules.EventSystem.Managers;
+using Utilities;
+using UnityEngine.UI;
+using Modules.Economy.Enums;
+using Modules.Economy.Managers;
 
 namespace Components.Towers.Controllers
 {
@@ -18,31 +22,27 @@ namespace Components.Towers.Controllers
         [SerializeField] private TMP_Text _towerDamageText;
 
         [Header("Positioning / Behavior")]
-        [SerializeField] private Canvas _canvas; // Screen Space - Overlay canvas
+        [SerializeField] private Canvas _canvas;
         [SerializeField] private RectTransform _panelRect;
         [SerializeField] private Vector3 _worldOffset = new Vector3(0f, 1.5f, 0f);
 
-        // Short debounce window to ignore hides immediately after showing (in seconds)
-        private float _ignoreHideUntil = 0f;
+        [Header("Upgrade")]
+        [SerializeField] private ButtonAnimate _upgradeButton;
+        [SerializeField] private TMP_Text _upgradeButtonText;
+
+        [Header("Force Layout Rects")]
+        [SerializeField] private RectTransform[] _layoutRects;
         [SerializeField] private float _hideDebounceSeconds = 0.25f;
+        private float _ignoreHideUntil = 0f;
+        private int _towerId;
+        private BaseTower _currentTower;
 
         private void Awake()
         {
             if (_panelRect == null)
                 _panelRect = GetComponentInChildren<RectTransform>();
 
-            // Ensure visuals start hidden
             ToggleContent(false);
-        }
-
-        private void OnEnable()
-        {
-            EventManager.OnTowerClicked += OnTowerClicked;
-        }
-
-        private void OnDisable()
-        {
-            EventManager.OnTowerClicked -= OnTowerClicked;
         }
 
         private void Update()
@@ -50,31 +50,49 @@ namespace Components.Towers.Controllers
             if (!UnityEngine.Input.GetMouseButtonDown(0))
                 return;
 
-            // If pointer is over UI, ignore (prevents dismissing when interacting with UI)
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
                 return;
 
-            // If we are within debounce window after showing, ignore hides
             if (Time.realtimeSinceStartup < _ignoreHideUntil)
                 return;
 
-            // Also ignore hides if user clicked inside the panel rect (so clicking the UI won't close it)
             if (_panelRect != null && RectTransformUtility.RectangleContainsScreenPoint(_panelRect, UnityEngine.Input.mousePosition, null))
                 return;
 
-            // Clicked somewhere that's not UI and not a tower click -> hide
             Hide();
         }
+        private void UpdateLayouts()
+        {
+            if (_layoutRects == null) return;
+            foreach (var item in _layoutRects)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(item);
+            }
+        }
+        private void SetUpgrade()
+        {
+            _upgradeButtonText.text = $"Upgrade <sprite=0>{TowerManager.GetNextUpgradeCost(_towerId)}";
+            _upgradeButton.RemoveAllListeners();
+            _upgradeButton.AddListener(() =>
+            {
+                TowerManager.UpgradeTower(_towerId);
+                Hide();
+            });
 
+            OnCurrencyChanged(ECurrencyType.Gold, CurrencyManager.GetAmount(ECurrencyType.Gold));
+        }
         private void OnTowerClicked(int towerId)
         {
-            // Find tower by instance id and show panel
+            _towerId = towerId;
+
             var towers = GameObject.FindGameObjectsWithTag(Components.Constants.GameObjectTags.Tower);
             if (towers == null || towers.Length == 0)
             {
                 Hide();
                 return;
             }
+
+            SetUpgrade();
 
             GameObject found = null;
             foreach (var t in towers)
@@ -102,8 +120,9 @@ namespace Components.Towers.Controllers
 
             ShowForTower(tower);
 
-            // set debounce window so a quick second click doesn't immediately hide the panel
             _ignoreHideUntil = Time.realtimeSinceStartup + _hideDebounceSeconds;
+
+            UpdateLayouts();
         }
 
         public void Initialize(BaseTower tower)
@@ -112,15 +131,16 @@ namespace Components.Towers.Controllers
 
             int towerId = tower.TowerId;
             var info = TowerManager.GetCurrentLevelInfo(towerId);
+            var nextInfo = TowerManager.GetNextLevelInfo(towerId);
 
             if (_towerRangeText != null)
-                _towerRangeText.text = info.Data.ProjectileRange.ToString();
+                _towerRangeText.text = $"{info.Data.ProjectileRange}(+{nextInfo.Data.ProjectileRange - info.Data.ProjectileRange})";
 
             if (_towerHealthText != null)
-                _towerHealthText.text = info.Data.Health.ToString();
+                _towerHealthText.text = $"{info.Data.Health}(+{nextInfo.Data.Health - info.Data.Health})";
 
             if (_towerDamageText != null)
-                _towerDamageText.text = info.DPS.ToString();
+                _towerDamageText.text = $"{info.DPS}(+{nextInfo.DPS - info.DPS})";
 
             if (_towerNameText != null)
                 _towerNameText.text = info.Data.TowerType.ToString();
@@ -130,9 +150,30 @@ namespace Components.Towers.Controllers
         {
             if (tower == null || _panelRect == null || _canvas == null) return;
 
+            // Hide range visuals on all towers first to ensure no stale visuals remain
+            var towers = GameObject.FindGameObjectsWithTag(Components.Constants.GameObjectTags.Tower);
+            if (towers != null && towers.Length > 0)
+            {
+                foreach (var t in towers)
+                {
+                    if (t == null) continue;
+                    var bt = t.GetComponent<BaseTower>();
+                    if (bt == null) continue;
+                    if (bt != tower)
+                    {
+                        bt.SetRangeVisible(false);
+                    }
+                }
+            }
+
+            _currentTower = tower;
+
             Initialize(tower);
 
             ToggleContent(true);
+
+            // show tower range visual
+            _currentTower.SetRangeVisible(true);
 
             Vector3 worldPos = tower.transform.position + _worldOffset;
             var cam = Camera.main;
@@ -146,6 +187,13 @@ namespace Components.Towers.Controllers
 
         public void Hide()
         {
+            // hide range visual when panel hides
+            if (_currentTower != null)
+            {
+                _currentTower.SetRangeVisible(false);
+                _currentTower = null;
+            }
+
             ToggleContent(false);
         }
 
@@ -153,6 +201,31 @@ namespace Components.Towers.Controllers
         {
             if (_panelRect == null) return;
             _panelRect.gameObject.SetActive(active);
+        }
+
+        private void OnCurrencyChanged(ECurrencyType type, int amount)
+        {
+            if (type != ECurrencyType.Gold) return;
+            if (TowerManager.CanUpgrade(_towerId))
+                _upgradeButton.Activate();
+            else
+                _upgradeButton.Deactivate();
+        }
+
+        private void OnEnable()
+        {
+            EventManager.OnTowerClicked += OnTowerClicked;
+            EventManager.OnCurrencyChanged += OnCurrencyChanged;
+        }
+
+        private void OnDisable()
+        {
+            EventManager.OnTowerClicked -= OnTowerClicked;
+            EventManager.OnCurrencyChanged -= OnCurrencyChanged;
+
+            // ensure range hidden if controller disabled
+            if (_currentTower != null)
+                _currentTower.SetRangeVisible(false);
         }
     }
 }

@@ -15,9 +15,9 @@ MonoBehaviour:
   settings:
     _location: 0
     path: SaveFile.es3
-    encryptionType: 1
+    encryptionType: 0
     compressionType: 0
-    encryptionPassword: parola01!+
+    encryptionPassword: password
     directory: 0
     format: 0
     prettyPrint: 1
@@ -55,5 +55,5 @@ MonoBehaviour:
   updateReferencesWhenSceneIsOpened: 1
   referenceFolders: []
   logDebugInfo: 0
-  logWarnings: 0
+  logWarnings: 1
   logErrors: 1

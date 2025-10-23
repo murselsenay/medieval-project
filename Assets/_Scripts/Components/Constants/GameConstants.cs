@@ -12,6 +12,7 @@ namespace Components.Constants
     public struct TowerKeys
     {
         public static string MainTower = "main-tower";
+        public static string AreaTower = "area-tower";
     }
     public struct CurrencyKeys
     {
