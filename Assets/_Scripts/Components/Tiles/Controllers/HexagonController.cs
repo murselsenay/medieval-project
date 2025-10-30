@@ -24,6 +24,11 @@ namespace Components.Tiles.Controllers
         private static HexagonController _currentlySelected;
         public static HexagonController CurrentlySelected => _currentlySelected;
 
+        /// <summary>
+        /// The ring index of this hexagon in the grid. Used for state updates.
+        /// </summary>
+        public int RingIndex { get; set; }
+
         // store previous state so we can restore when deselecting
         private EHexagonState _previousState;
 

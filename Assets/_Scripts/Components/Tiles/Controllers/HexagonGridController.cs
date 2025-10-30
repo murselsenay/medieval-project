@@ -1,11 +1,13 @@
+using Components.Tiles.Enums;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
+using Modules.EventSystem.Managers;
 using Modules.ObjectPoolSystem;
+using Modules.WaveSystem.Models;
 using NaughtyAttributes;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using Components.Tiles.Enums;
 
 namespace Components.Tiles.Controllers
 {
@@ -300,6 +302,59 @@ namespace Components.Tiles.Controllers
                     return h;
             }
             return null;
+        }
+
+        public void UpdateHexagonStatesByEnabledRings(int waveIndex, WaveDefinition wave)
+        {
+            if (_spawned == null || _spawned.Count == 0) return;
+            _enabledRings++;
+
+            int idx = 0;
+            int count = _spawned.Count;
+            int rings = 0;
+            int expected = 1; // merkez
+
+            while (idx < count)
+            {
+                // Merkez
+                if (idx == 0)
+                {
+                    UpdateHexState(_spawned[idx], 0);
+                    idx++;
+                    rings = 1;
+                    expected = 6 * rings;
+                    continue;
+                }
+
+                // Her ringde 6*ring kadar hexagon var
+                for (int i = 0; i < expected && idx < count; i++, idx++)
+                {
+                    UpdateHexState(_spawned[idx], rings);
+                }
+                rings++;
+                expected = 6 * rings;
+            }
+        }
+
+        private void UpdateHexState(HexagonController hex, int ringIndex)
+        {
+            if (hex == null) return;
+            if (ringIndex <= _enabledRings)
+                hex.ActivateHexagon();
+            else if (ringIndex == _enabledRings + 1)
+                hex.SpawnHexagon();
+            else
+                hex.DeactivateHexagon();
+        }
+
+        public void OnEnable()
+        {
+            EventManager.OnWaveCompleted += UpdateHexagonStatesByEnabledRings;
+        }
+
+        public void OnDisable()
+        {
+            EventManager.OnWaveCompleted += UpdateHexagonStatesByEnabledRings;
         }
     }
 }
