@@ -17,58 +17,12 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: b03c754a8dee4764ca1334811fd7083d
   m_SerializeEntries:
-  - m_GUID: 00b79aff112c93e49b73cdc3900264f3
-    m_Address: Knight
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - minion
-    - minion-knight
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 14bbf2b763bbf8e458be2635a02ae0ae
-    m_Address: Tower_Build_Item
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - prefabs
-    - tower-build-item
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1740dbedf6ba0fe48bb357f49bba96a1
     m_Address: Gold
     m_ReadOnly: 0
     m_SerializedLabels:
     - currency
     - currency-gold
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 25ed11b9a540fc449853cac00a618c90
-    m_Address: Hexagon_Ground
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - hexagon
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 7a2f4c52dc43abc4fb05e6d696cb3757
-    m_Address: Mage
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - minion
-    - minion-mage
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8f9914520cf5ba24a83fad4bea7f84bb
-    m_Address: Projectile_Arrow
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - prefabs
-    - projectile
-    - projectile-arrow
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: a2a177bf73e7b3b41ac17bd1bbe775a4
-    m_Address: Barbarian
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - minion
-    - minion-barbarian
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c63181f241b72714fbcde0f2d4bfd62a
@@ -78,46 +32,6 @@ MonoBehaviour:
     - currency
     - currency-gem
     - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c9ff3c6fa897e214e85b27d10db655d7
-    m_Address: Area_Projectile
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - prefabs
-    - projectile
-    - projectile-area
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: d8d33e7970291214690e9a1026a344d6
-    m_Address: Area_Tower
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - area-tower
-    - prefabs
-    - tower
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e4c6779ff55451d49aa756ccea2d74c2
-    m_Address: Archer
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - minion
-    - minion-archer
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e67de7fb0865a4d4fbdc77d2e536788e
-    m_Address: Spell_Projectile
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - prefabs
-    - projectile
-    - projectile-spell
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: ec3f6de513d99a44a856013e92c124cd
-    m_Address: Main_Tower
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - main-tower
-    - prefabs
-    - tower
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: da15862d053030f42969f3882a7d61c8, type: 2}
