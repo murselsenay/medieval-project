@@ -1,0 +1,30 @@
+using Modules.JobSystem.Enums;
+
+namespace Modules.JobSystem.Models
+{
+    public class Job
+    {
+        public JobDifficulty Difficulty { get; private set; }
+        public string DestinationName { get; private set; }
+        public float Distance { get; private set; } // km
+        public int PassengerCount { get; private set; }
+
+        public float BaseReward { get; private set; } 
+        public float BaseFuelCost { get; private set; }
+        public float BaseDuration { get; private set; }
+
+        public bool IsActive { get; set; }
+
+        public Job(JobDifficulty difficulty, string destination, float distance, int passengers, float reward, float fuelCost, float duration)
+        {
+            this.Difficulty = difficulty;
+            this.DestinationName = destination;
+            this.Distance = distance;
+            this.PassengerCount = passengers;
+            this.BaseReward = reward;
+            this.BaseFuelCost = fuelCost;
+            this.BaseDuration = duration;
+            this.IsActive = false;
+        }
+    }
+}
