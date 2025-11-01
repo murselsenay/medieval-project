@@ -15,7 +15,7 @@ namespace Modules.JobSystem.Managers
         private const float FUEL_COST_PER_KM = 0.1f;
         private const float BASE_SPEED_KMPH = 40.0f;
 
-        static JobManager()
+        public static void Init()
         {
             AvailableJobs = new List<Job>();
             locationList = new List<JobLocationData>
@@ -26,6 +26,8 @@ namespace Modules.JobSystem.Managers
             new JobLocationData("Kadýköy", 15.5f),
             new JobLocationData("Havalimaný", 45.0f)
         };
+
+            GenerateInitialJobs(10);
         }
 
         public static void GenerateInitialJobs(int count)

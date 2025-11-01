@@ -25,6 +25,13 @@ MonoBehaviour:
     - currency-gold
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c0abfb4d26a6b1246a420f9217d29ba0
+    m_Address: Job_Item
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - job-item
+    - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c63181f241b72714fbcde0f2d4bfd62a
     m_Address: Gem
     m_ReadOnly: 0

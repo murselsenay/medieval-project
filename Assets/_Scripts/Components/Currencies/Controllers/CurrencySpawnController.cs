@@ -7,6 +7,8 @@ using Components.Constants;
 using Modules.Economy.Enums;
 using Modules.Economy.Managers;
 using Modules.EventSystem.Managers;
+using NaughtyAttributes;
+using Modules.PopupSystem.Managers;
 
 namespace Components.Currencies.Controllers
 {
@@ -17,6 +19,11 @@ namespace Components.Currencies.Controllers
         private Transform _spawnPoint;
         [SerializeField] private int _spawnDelayMs = 40;
 
+        [Button]
+        public void ShowPopup()
+        {
+            PopupManager.ShowPopup(Modules.PopupSystem.Enums.EPopup.Jobs);
+        }
         private void OnEnable()
         {
             EventManager.OnSpawnCurrencyRequest += OnSpawnRequest;

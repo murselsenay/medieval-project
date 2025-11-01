@@ -45,8 +45,10 @@ namespace Modules.ObjectPoolSystem
         public virtual void Activate()
         {
             gameObject.SetActive(true);
+            // Reset transforms to safe defaults when reusing from pool
+            transform.localScale = Vector3.one;
             transform.localEulerAngles = new Vector3(0, 0, 0);
-            transform.localRotation = new Quaternion(0, 0, 0, 0);
+            transform.localRotation = Quaternion.identity;
             Activated?.Invoke(this);
         }
 

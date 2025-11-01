@@ -45,6 +45,7 @@ MonoBehaviour:
   m_overridePlayerVersion: '[UnityEditor.PlayerSettings.bundleVersion]'
   m_GroupAssets:
   - {fileID: 11400000, guid: 71b5d424b66905e499c48d1fda0017e3, type: 2}
+  - {fileID: 11400000, guid: 3e208d9c4743e7a4db12663deeef9069, type: 2}
   - {fileID: 11400000, guid: cde79fd2b7038d444b685a97bfe76a9a, type: 2}
   - {fileID: 11400000, guid: ac03ab8a1f1bc3740b4ffaa8fe6ee39b, type: 2}
   m_BuildSettings:
@@ -88,24 +89,13 @@ MonoBehaviour:
   m_LabelTable:
     m_LabelNames:
     - default
-    - hexagon
     - prefabs
-    - projectile
-    - projectile-arrow
-    - tower
-    - main-tower
-    - minion
-    - minion-barbarian
-    - minion-archer
-    - minion-knight
-    - minion-mage
     - currency
     - currency-gold
     - currency-gem
-    - projectile-spell
-    - area-tower
-    - projectile-area
-    - tower-build-item
+    - popup-jobs
+    - popup
+    - job-item
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: b844ca58d73858d44ac3ee56f57e01fd, type: 2}
