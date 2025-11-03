@@ -1,4 +1,7 @@
 using Modules.JobSystem.Models;
+using Modules.TimerSystem.Managers;
+using Scriptables.Singletons;
+using UnityEngine;
 
 namespace Modules.DriverSystem.Models
 {
@@ -10,15 +13,20 @@ namespace Modules.DriverSystem.Models
         public Job CurrentJob { get; private set; }
         public bool IsOnJob => CurrentJob != null;
 
+        // Unix timestamp when the current job was started (seconds).0 if none.
+        public long JobStartUnix { get; private set; }
+
         public abstract float SpeedMultiplier { get; }
         public abstract float FuelConsumptionMultiplier { get; }
         public abstract float AccidentRisk { get; }
         public abstract float BonusTipChance { get; }
+        public Sprite Icon=> ResourceWarehouse.Instance.GetDriverPortrait(DriverName);
 
         public Driver(string name)
         {
             this.DriverName = name;
             this.CurrentJob = null;
+            this.JobStartUnix =0;
         }
 
         public abstract JobResult CalculateJobResult(float baseJobReward, float baseJobFuelCost);
@@ -26,11 +34,13 @@ namespace Modules.DriverSystem.Models
         public void StartJob(Job jobToStart)
         {
             CurrentJob = jobToStart;
+            JobStartUnix = TimerManager.CurrentTime;
         }
 
         public void FinishJob()
         {
             CurrentJob = null;
+            JobStartUnix =0;
         }
     }
 }

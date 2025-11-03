@@ -5,6 +5,7 @@ namespace Modules.JobSystem.Managers
     using Modules.JobSystem.Models;
     using System.Collections.Generic;
     using UnityEngine;
+    using Modules.EventSystem.Managers;
 
     public static class JobManager
     {
@@ -74,17 +75,43 @@ namespace Modules.JobSystem.Managers
             return new Job(difficulty, randomLocation.LocationName, distance, passengerCount, baseReward, baseFuelCost, baseDuration);
         }
 
-        public static void AssignJob(Job job, Driver driver)
+        public static bool AssignJob(Job job, Driver driver)
         {
+            if (job == null || driver == null) return false;
+            // Prevent multiple drivers on same job
+            if (job.IsActive) return false;
+
             job.IsActive = true;
             driver.StartJob(job);
             AvailableJobs.Remove(job);
+
+            // trigger event
+            EventManager.TriggerJobAssigned(job);
+
+            return true;
         }
 
         public static void CompleteJob(Driver driver)
         {
             driver.FinishJob();
             AvailableJobs.Add(CreateNewJob());
+        }
+
+        public static void UnassignJob(Driver driver)
+        {
+            if (driver == null) return;
+            var job = driver.CurrentJob;
+            if (job == null) return;
+
+            // mark job as inactive and return it to available jobs
+            job.IsActive = false;
+            driver.FinishJob();
+
+            // Return the same job instance to available jobs so it can be reassigned
+            AvailableJobs.Add(job);
+
+            // trigger event
+            EventManager.TriggerJobUnassigned(job);
         }
 
         private static JobDifficulty GetRandomDifficulty()

@@ -18,13 +18,12 @@ namespace Modules.PopupSystem.Popups
     public class JobPopup : BasePopup
     {
         [SerializeField] private RectTransform _jobsHolder;
-        [SerializeField] private ScrollRect _scrollRect; // keep field but remove direct logic from this class
+        [SerializeField] private ScrollRect _scrollRect;
 
         private readonly List<JobItem> _spawnedItems = new List<JobItem>();
 
         public override void Init()
         {
-            // initial reset (keeps content top before population starts)
             if (_jobsHolder != null)
             {
                 var ap = _jobsHolder.anchoredPosition;
@@ -35,7 +34,6 @@ namespace Modules.PopupSystem.Popups
             PopulateJobs().Forget();
         }
 
-        // Disable scrollRect before activating (so base.Activate's scale animation won't be interfered)
         public override void Activate()
         {
             if (_scrollRect != null)
@@ -48,13 +46,11 @@ namespace Modules.PopupSystem.Popups
             base.Activate();
         }
 
-        // Cleanup after close animation finishes so items stay visible during animation
         protected override void OnAfterClose()
         {
             ClearJobs();
         }
 
-        // Re-enable scroll rect after show animation completed
         protected override void OnAfterShow()
         {
             if (_scrollRect != null)
@@ -67,7 +63,6 @@ namespace Modules.PopupSystem.Popups
 
         public async UniTask PopulateJobs()
         {
-            // Ensure content starts at top
             if (_jobsHolder != null)
             {
                 var ap0 = _jobsHolder.anchoredPosition;
@@ -88,7 +83,6 @@ namespace Modules.PopupSystem.Popups
             var jobs = JobManager.AvailableJobs;
             if (jobs == null || jobs.Count == 0) return;
 
-            // Sort jobs by Difficulty ascending: Easy -> Normal -> Hard -> VeryHard
             var orderedJobs = jobs.OrderBy(j => j.Difficulty).ToList();
 
             foreach (Job job in orderedJobs)
@@ -109,20 +103,17 @@ namespace Modules.PopupSystem.Popups
                     }
                 }
 
-                if (item == null) continue;
+                if (item == null) continue; 
 
                 item.Init(job);
                 _spawnedItems.Add(item);
             }
 
-            // Force a single layout rebuild
             if (_jobsHolder != null)
             {
                 Canvas.ForceUpdateCanvases();
                 LayoutRebuilder.ForceRebuildLayoutImmediate(_jobsHolder);
             }
-
-            // Note: re-enabling scrollRect or adjusting its position will be handled elsewhere as requested
         }
 
         public void ClearJobs()

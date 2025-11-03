@@ -21,5 +21,6 @@ namespace Components.Constants
     public struct AddressableKeys
     {
         public static string JobItem = "job-item";
+        public static string DriverStatusItem = "driver-status-item";
     }
 }

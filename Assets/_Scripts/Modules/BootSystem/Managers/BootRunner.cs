@@ -1,6 +1,8 @@
 using System.Threading.Tasks;
 using UnityEngine;
 using Modules.Logger;
+using System.Linq;
+using Cysharp.Threading.Tasks;
 
 namespace Modules.BootSystem.Managers
 {
@@ -20,16 +22,32 @@ namespace Modules.BootSystem.Managers
 
         private async void Start()
         {
-            // Load BootManager from Resources/BootManager.asset (you must place it there)
+            // Try the expected path first
             var manager = Resources.Load<Scriptables.BootManager>("Scriptables/Boot/BootManager");
+
+            // Fallback: if not found at expected path, try to find any BootManager in Resources
             if (manager == null)
             {
-                DebugLogger.LogWarning("BootManager not found in Resources. Skipping boot.");
+                var all = Resources.LoadAll<Scriptables.BootManager>("");
+                if (all != null && all.Length >0)
+                {
+                    manager = all[0];
+                }
+            }
+
+            if (manager == null)
+            {
                 return;
             }
 
+            if (manager.Steps == null || manager.Steps.Count ==0)
+            {
+            }
+            else
+            {
+            }
+
             await manager.RunBootAsync();
-            DebugLogger.Log("Boot sequence completed.");
         }
     }
 }

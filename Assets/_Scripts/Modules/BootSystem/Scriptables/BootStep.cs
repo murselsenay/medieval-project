@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using UnityEngine;
 using Modules.BootSystem.Models;
+using Cysharp.Threading.Tasks;
 
 namespace Modules.BootSystem.Scriptables
 {
@@ -9,10 +10,9 @@ namespace Modules.BootSystem.Scriptables
         [Tooltip("Optional display name for the step")]
         public string StepName;
 
-        // Override this to perform sync or async initialization. Return a BootStepResult with success/failure info.
-        public virtual Task<BootStepResult> ExecuteAsync()
+        public virtual UniTask<BootStepResult> ExecuteAsync()
         {
-            return Task.FromResult(new BootStepResult { Success = true, Message = "No-op" });
+            return UniTask.FromResult(new BootStepResult { Success = true, Message = "No-op" });
         }
     }
 }

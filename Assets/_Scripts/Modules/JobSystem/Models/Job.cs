@@ -1,9 +1,11 @@
 using Modules.JobSystem.Enums;
+using System;
 
 namespace Modules.JobSystem.Models
 {
     public class Job
     {
+        public string Id { get; }
         public JobDifficulty Difficulty { get; private set; }
         public string DestinationName { get; private set; }
         public float Distance { get; private set; } // km
@@ -17,6 +19,7 @@ namespace Modules.JobSystem.Models
 
         public Job(JobDifficulty difficulty, string destination, float distance, int passengers, float reward, float fuelCost, float duration)
         {
+            this.Id = Guid.NewGuid().ToString();
             this.Difficulty = difficulty;
             this.DestinationName = destination;
             this.Distance = distance;

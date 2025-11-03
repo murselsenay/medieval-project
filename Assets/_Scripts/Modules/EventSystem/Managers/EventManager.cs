@@ -1,6 +1,7 @@
 using UnityEngine;
 using Modules.Economy.Enums;
 using Modules.PopupSystem.Components;
+using System;
 
 namespace Modules.EventSystem.Managers
 {
@@ -19,6 +20,13 @@ namespace Modules.EventSystem.Managers
         public static event CurrencyRequestCompleted OnCurrencyRequestCompleted;
         public static event PopupEvent OnPopupShowed;
         public static event PopupEvent OnPopupClosed;
+
+        // New timer tick event
+        public static event Action<long> OnTimerTick;
+
+        // Job assignment events
+        public static event Action<Modules.JobSystem.Models.Job> OnJobAssigned;
+        public static event Action<Modules.JobSystem.Models.Job> OnJobUnassigned;
         #endregion
 
         #region Methods
@@ -45,6 +53,33 @@ namespace Modules.EventSystem.Managers
         public static void DelegatePopupClosed(BasePopup popup)
         {
             OnPopupClosed?.Invoke(popup);
+        }
+
+        public static void TriggerTimerTick(long unixTime)
+        {
+            try
+            {
+                OnTimerTick?.Invoke(unixTime);
+            }
+            catch { }
+        }
+
+        public static void TriggerJobAssigned(Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnJobAssigned?.Invoke(job);
+            }
+            catch { }
+        }
+
+        public static void TriggerJobUnassigned(Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnJobUnassigned?.Invoke(job);
+            }
+            catch { }
         }
         #endregion
     }

@@ -47,8 +47,9 @@ namespace Modules.ObjectPoolSystem
             gameObject.SetActive(true);
             // Reset transforms to safe defaults when reusing from pool
             transform.localScale = Vector3.one;
-            transform.localEulerAngles = new Vector3(0, 0, 0);
+            transform.localEulerAngles = new Vector3(0,0,0);
             transform.localRotation = Quaternion.identity;
+            transform.localPosition = Vector3.zero;
             Activated?.Invoke(this);
         }
 
@@ -66,10 +67,24 @@ namespace Modules.ObjectPoolSystem
         {
             DeActivated?.Invoke(this);
 
+            // Ensure we have a reference to the pool holder and reset transforms before parenting
             if (_poolHolder == null)
-                transform.SetParent(GameObject.Find("PoolHolder").transform);
+            {
+                var ph = GameObject.Find("PoolHolder");
+                if (ph != null)
+                    _poolHolder = ph.transform;
+            }
+
+            // Reset local transforms to safe defaults so pooled objects are stored consistently
+            transform.localScale = Vector3.one;
+            transform.localRotation = Quaternion.identity;
+            transform.localEulerAngles = Vector3.zero;
+            transform.localPosition = Vector3.zero;
+
+            if (_poolHolder == null)
+                transform.SetParent(GameObject.Find("PoolHolder")?.transform);
             else
-                transform.SetParent(_poolHolder);
+                transform.SetParent(_poolHolder, false);
 
             gameObject.SetActive(false);
         }

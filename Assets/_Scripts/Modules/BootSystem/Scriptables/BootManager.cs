@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using Modules.BootSystem.Models;
 using Modules.Logger;
+using Cysharp.Threading.Tasks;
 
 namespace Modules.BootSystem.Scriptables
 {
@@ -16,7 +17,7 @@ namespace Modules.BootSystem.Scriptables
         public bool IsRunning { get; private set; }
         public bool HasRun { get; private set; }
 
-        public async Task RunBootAsync()
+        public async UniTask RunBootAsync()
         {
             if (IsRunning || HasRun) return;
             IsRunning = true;
@@ -26,6 +27,8 @@ namespace Modules.BootSystem.Scriptables
 
             foreach (var step in ordered)
             {
+                if (step == null) continue;
+
                 try
                 {
                     var res = await step.ExecuteAsync();

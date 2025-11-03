@@ -49,6 +49,14 @@ namespace Modules.ObjectPoolSystem
                     UnityEngine.Object.DontDestroyOnLoad(_poolHolder);
                 }
             }
+
+            // Ensure PoolHolder is at root and has a safe transform to avoid inheriting scale from other parents
+            if (_poolHolder.transform.parent != null)
+                _poolHolder.transform.SetParent(null);
+
+            _poolHolder.transform.localScale = Vector3.one;
+            _poolHolder.transform.localRotation = Quaternion.identity;
+            _poolHolder.transform.localPosition = Vector3.zero;
         }
 
         private static async UniTask LoadPrefabs()
@@ -144,7 +152,8 @@ namespace Modules.ObjectPoolSystem
 
                 _instancePoolKeys[obj] = poolKey;
 
-                obj.transform.SetParent(_poolHolder.transform);
+                // ensure stored under pool holder with safe transform
+                obj.transform.SetParent(_poolHolder.transform, false);
 
                 DetachHandlers(obj);
                 obj.Deactivate();
@@ -166,7 +175,8 @@ namespace Modules.ObjectPoolSystem
                 var item = queue.Dequeue() as T;
                 if (item != null)
                 {
-                    item.transform.SetParent(parent ?? _poolHolder.transform);
+                    // set parent preserving local transform (avoid inheriting unexpected world transform)
+                    item.transform.SetParent(parent ?? _poolHolder.transform, false);
                     item.Activate();
                     return item;
                 }
@@ -196,7 +206,7 @@ namespace Modules.ObjectPoolSystem
                 var item = queue.Dequeue() as T;
                 if (item != null)
                 {
-                    item.transform.SetParent(parent ?? _poolHolder.transform);
+                    item.transform.SetParent(parent ?? _poolHolder.transform, false);
                     item.Activate();
                     return item;
                 }
@@ -230,6 +240,7 @@ namespace Modules.ObjectPoolSystem
 
             AttachHandlers(instantiated, poolKey);
 
+            instantiated.transform.SetParent(parent ?? _poolHolder.transform, false);
             instantiated.Activate();
             return instantiated;
         }
@@ -260,7 +271,8 @@ namespace Modules.ObjectPoolSystem
 
             DetachHandlers(obj);
 
-            obj.transform.SetParent(_poolHolder.transform);
+            // parent under pool holder without changing local transform
+            obj.transform.SetParent(_poolHolder.transform, false);
             obj.Deactivate();
 
             _instancePoolKeys[obj] = poolKey;
