@@ -2,24 +2,18 @@ using UnityEngine;
 using Modules.Economy.Enums;
 using Modules.PopupSystem.Components;
 using System;
+using Modules.ClientSystem.Models;
 
 namespace Modules.EventSystem.Managers
 {
     public static class EventManager
     {
-        #region Delegates
-        public delegate void SpawnCurrencyRequest(Transform spawnPoint, ECurrencyType type, int amount);
-        public delegate void CurrencyChanged(ECurrencyType type, int amount);
-        public delegate void CurrencyRequestCompleted(ECurrencyType type);
-        public delegate void PopupEvent(BasePopup popup);
-        #endregion
-
         #region Events
-        public static event SpawnCurrencyRequest OnSpawnCurrencyRequest;
-        public static event CurrencyChanged OnCurrencyChanged;
-        public static event CurrencyRequestCompleted OnCurrencyRequestCompleted;
-        public static event PopupEvent OnPopupShowed;
-        public static event PopupEvent OnPopupClosed;
+        public static event Action<Transform, ECurrencyType, int> OnSpawnCurrencyRequest;
+        public static event Action<ECurrencyType, int> OnCurrencyChanged;
+        public static event Action<ECurrencyType> OnCurrencyRequestCompleted;
+        public static event Action<BasePopup> OnPopupShowed;
+        public static event Action<BasePopup> OnPopupClosed;
 
         // New timer tick event
         public static event Action<long> OnTimerTick;
@@ -27,35 +21,63 @@ namespace Modules.EventSystem.Managers
         // Job assignment events
         public static event Action<Modules.JobSystem.Models.Job> OnJobAssigned;
         public static event Action<Modules.JobSystem.Models.Job> OnJobUnassigned;
+
+        // Client/Trip job events
+        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobCreated;
+        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobAccepted;
+        public static event Action<Client> OnClientJobRejected;
+
+        // Job lifecycle
+        public static event Action<Modules.JobSystem.Models.Job> OnJobCancelled;
         #endregion
 
         #region Methods
         public static void DelegateSpawnCurrencyRequest(Transform spawnPoint, ECurrencyType type, int amount)
         {
-            OnSpawnCurrencyRequest?.Invoke(spawnPoint, type, amount);
+            try
+            {
+                OnSpawnCurrencyRequest?.Invoke(spawnPoint, type, amount);
+            }
+            catch { }
         }
 
         public static void DelegateCurrencyChanged(ECurrencyType type, int amount)
         {
-            OnCurrencyChanged?.Invoke(type, amount);
+            try
+            {
+                OnCurrencyChanged?.Invoke(type, amount);
+            }
+            catch { }
         }
 
         public static void DelegateCurrencyRequestCompleted(ECurrencyType type)
         {
-            OnCurrencyRequestCompleted?.Invoke(type);
+            try
+            {
+                OnCurrencyRequestCompleted?.Invoke(type);
+            }
+            catch { }
         }
 
         public static void DelegatePopupShowed(BasePopup popup)
         {
-            OnPopupShowed?.Invoke(popup);
+            try
+            {
+                OnPopupShowed?.Invoke(popup);
+            }
+            catch { }
         }
 
         public static void DelegatePopupClosed(BasePopup popup)
         {
-            OnPopupClosed?.Invoke(popup);
+            try
+            {
+                OnPopupClosed?.Invoke(popup);
+            }
+            catch { }
         }
 
-        public static void TriggerTimerTick(long unixTime)
+        public static void DelegateTimerTick(long unixTime)
         {
             try
             {
@@ -64,7 +86,7 @@ namespace Modules.EventSystem.Managers
             catch { }
         }
 
-        public static void TriggerJobAssigned(Modules.JobSystem.Models.Job job)
+        public static void DelegateJobAssigned(Modules.JobSystem.Models.Job job)
         {
             try
             {
@@ -73,7 +95,7 @@ namespace Modules.EventSystem.Managers
             catch { }
         }
 
-        public static void TriggerJobUnassigned(Modules.JobSystem.Models.Job job)
+        public static void DelegateJobUnassigned(Modules.JobSystem.Models.Job job)
         {
             try
             {
@@ -81,6 +103,51 @@ namespace Modules.EventSystem.Managers
             }
             catch { }
         }
+
+        public static void DelegateClientJobCreated(Client client, Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnClientJobCreated?.Invoke(client, job);
+            }
+            catch { }
+        }
+
+        public static void DelegateClientJobAccepted(Client client, Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnClientJobAccepted?.Invoke(client, job);
+            }
+            catch { }
+        }
+
+        public static void DelegateClientJobRejected(Client client)
+        {
+            try
+            {
+                OnClientJobRejected?.Invoke(client);
+            }
+            catch { }
+        }
+
+        public static void DelegateJobCancelled(Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnJobCancelled?.Invoke(job);
+            }
+            catch { }
+        }
+
+        // Backwards-compatible Trigger* wrappers
+        public static void TriggerTimerTick(long unixTime) => DelegateTimerTick(unixTime);
+        public static void TriggerJobAssigned(Modules.JobSystem.Models.Job job) => DelegateJobAssigned(job);
+        public static void TriggerJobUnassigned(Modules.JobSystem.Models.Job job) => DelegateJobUnassigned(job);
+        public static void TriggerClientJobCreated(Client client, Modules.JobSystem.Models.Job job) => DelegateClientJobCreated(client, job);
+        public static void TriggerClientJobAccepted(Client client, Modules.JobSystem.Models.Job job) => DelegateClientJobAccepted(client, job);
+        public static void TriggerClientJobRejected(Client client) => DelegateClientJobRejected(client);
+        public static void TriggerJobCancelled(Modules.JobSystem.Models.Job job) => DelegateJobCancelled(job);
         #endregion
     }
 }

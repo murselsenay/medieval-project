@@ -228,19 +228,26 @@ namespace Modules.ObjectPoolSystem
                 return null;
             }
 
-            T instantiated = await AddressableManager.InstantiateAsync<T>(key, parent ?? _poolHolder.transform);
+            // instantiate addressable under pool holder to avoid transient root placement
+            Transform targetParent = parent ?? _poolHolder.transform;
+            T instantiated = await AddressableManager.InstantiateAsync<T>(key, targetParent);
             if (instantiated == null)
             {
                 Debug.LogError($"Addressable instantiate failed or component missing for address: {key}");
                 return null;
             }
 
+            // Ensure inactive, parent set, then activate to avoid visible root ghost
+            try { instantiated.gameObject.SetActive(false); } catch { }
+
             _addressableInstances.Add(instantiated.gameObject);
             _instancePoolKeys[instantiated] = poolKey;
 
             AttachHandlers(instantiated, poolKey);
 
-            instantiated.transform.SetParent(parent ?? _poolHolder.transform, false);
+            // Force parent (AddressableManager may not respect parent param)
+            instantiated.transform.SetParent(targetParent, false);
+
             instantiated.Activate();
             return instantiated;
         }

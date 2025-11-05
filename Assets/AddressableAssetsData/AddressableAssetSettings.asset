@@ -97,6 +97,8 @@ MonoBehaviour:
     - popup
     - job-item
     - driver-status-item
+    - popup-client
+    - client-item
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: b844ca58d73858d44ac3ee56f57e01fd, type: 2}

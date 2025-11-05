@@ -35,3 +35,43 @@ MonoBehaviour:
       Value: {fileID: 21300000, guid: ad097ed84bc3c5f4a9369509304dfb9a, type: 3}
   _vehicleSprites:
     _serializedList: []
+  _clientPortraits:
+    _serializedList:
+    - Key: Ayse
+      Value: {fileID: 21300000, guid: 532d2ee88d3064140af06be1158748f5, type: 3}
+    - Key: Fatma
+      Value: {fileID: 21300000, guid: ee5ca766e6696b04086085404db86549, type: 3}
+    - Key: Ece
+      Value: {fileID: 21300000, guid: e9c02410f78bc984cb9494804880d45f, type: 3}
+    - Key: Selin
+      Value: {fileID: 21300000, guid: 333c83beee997b946a5b1f8939afc303, type: 3}
+    - Key: Lara
+      Value: {fileID: 21300000, guid: fb6803025f850be4381ddd032b45d1c9, type: 3}
+    - Key: Ahmet
+      Value: {fileID: 21300000, guid: f815f32545c0c164cb9a579a4f6776f2, type: 3}
+    - Key: Mehmet
+      Value: {fileID: 21300000, guid: d723a2abb62ee8d49b7b27673b6171dc, type: 3}
+    - Key: Can
+      Value: {fileID: 21300000, guid: 90677b7f0f9d0c548b13d9fb68372b9d, type: 3}
+    - Key: Ozan
+      Value: {fileID: 21300000, guid: ef45fc08205bbb94ab463d5c99804539, type: 3}
+    - Key: Deniz
+      Value: {fileID: 21300000, guid: 6f8c87d0f0a420d46933b680014fd902, type: 3}
+    - Key: Umut
+      Value: {fileID: 21300000, guid: 6f8c87d0f0a420d46933b680014fd902, type: 3}
+    - Key: Mert
+      Value: {fileID: 21300000, guid: 0b945aa13437a79469dda6bf8e556a84, type: 3}
+  _femaleClientNames:
+  - Ayse
+  - Fatma
+  - Ece
+  - Selin
+  - Lara
+  _maleClientNames:
+  - Ahmet
+  - Mehmet
+  - Can
+  - Ozan
+  - Deniz
+  - Umut
+  - Mert

@@ -1,6 +1,6 @@
 namespace Modules.JobSystem.Enums
 {
-    public enum JobDifficulty
+    public enum EJobDifficulty
     {
         Easy,
         Normal,

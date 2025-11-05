@@ -6,18 +6,19 @@ namespace Modules.JobSystem.Models
     public class Job
     {
         public string Id { get; }
-        public JobDifficulty Difficulty { get; private set; }
+        public EJobDifficulty Difficulty { get; private set; }
+        public EJobState State { get; private set; } = EJobState.Waiting;
         public string DestinationName { get; private set; }
         public float Distance { get; private set; } // km
         public int PassengerCount { get; private set; }
 
-        public float BaseReward { get; private set; } 
+        public float BaseReward { get; private set; }
         public float BaseFuelCost { get; private set; }
         public float BaseDuration { get; private set; }
 
         public bool IsActive { get; set; }
 
-        public Job(JobDifficulty difficulty, string destination, float distance, int passengers, float reward, float fuelCost, float duration)
+        public Job(EJobDifficulty difficulty, string destination, float distance, int passengers, float reward, float fuelCost, float duration)
         {
             this.Id = Guid.NewGuid().ToString();
             this.Difficulty = difficulty;
@@ -28,6 +29,12 @@ namespace Modules.JobSystem.Models
             this.BaseFuelCost = fuelCost;
             this.BaseDuration = duration;
             this.IsActive = false;
+        }
+
+        // Allow controlled state changes from external managers
+        public void SetState(EJobState newState)
+        {
+            this.State = newState;
         }
     }
 }
