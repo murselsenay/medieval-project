@@ -9,7 +9,6 @@ namespace Modules.JobSystem.Managers
 
     public static class JobManager
     {
-        // Jobs that the player has accepted (added from clients)
         public static List<Job> AcceptedJobs { get; private set; }
 
         private const float FARE_PER_KM = 2.5f;
@@ -21,7 +20,6 @@ namespace Modules.JobSystem.Managers
             AcceptedJobs = new List<Job>();
         }
 
-        // Add a job that was created by a client and accepted by the player
         public static void AddAcceptedJob(Job job)
         {
             if (job == null) return;
@@ -32,17 +30,14 @@ namespace Modules.JobSystem.Managers
         public static bool AssignJob(Job job, Driver driver)
         {
             if (job == null || driver == null) return false;
-            // Prevent multiple drivers on same job
             if (job.IsActive) return false;
 
             job.IsActive = true;
             driver.StartJob(job);
 
-            // remove from accepted jobs so it's not assignable anymore
             AcceptedJobs.Remove(job);
 
-            // trigger event
-            EventManager.TriggerJobAssigned(job);
+            EventManager.DelegateJobAssigned(job);
 
             return true;
         }
@@ -51,9 +46,6 @@ namespace Modules.JobSystem.Managers
         {
             if (driver == null) return;
             driver.FinishJob();
-            // Do not create new jobs automatically anymore
-            // Trigger unassigned/completed event as needed
-            // We leave job lifecycle management to higher level systems
         }
 
         public static void UnassignJob(Driver driver)
@@ -62,15 +54,12 @@ namespace Modules.JobSystem.Managers
             var job = driver.CurrentJob;
             if (job == null) return;
 
-            // mark job as inactive and return it to accepted jobs so it can be reassigned
             job.IsActive = false;
             driver.FinishJob();
 
-            // Return the same job instance to accepted jobs so it can be reassigned
             AcceptedJobs.Add(job);
 
-            // trigger event
-            EventManager.TriggerJobUnassigned(job);
+            EventManager.DelegateJobUnassigned(job);
         }
 
         private static EJobDifficulty GetRandomDifficulty()

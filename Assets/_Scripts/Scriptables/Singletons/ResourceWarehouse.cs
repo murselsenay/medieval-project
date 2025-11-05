@@ -27,6 +27,44 @@ namespace Scriptables.Singletons
         [SerializeField] private List<string> _femaleClientNames = new List<string> { "Ayse", "Fatma", "Ece", "Selin", "Lara" };
         [SerializeField] private List<string> _maleClientNames = new List<string> { "Ahmet", "Mehmet", "Can", "Ozan", "Deniz", "Umut", "Mert" };
 
+        // Destinations (name -> distance in km)
+        [BHeader("Destinations")]
+        [SerializeField]
+        private SerializedDictionary<string, int> _destinationsDistances = new SerializedDictionary<string, int>
+        {
+            { "Tavern",3 },
+            { "Market",2 },
+            { "Harbor",8 },
+            { "Castle",12 },
+            { "Fields",6 },
+            { "Mill",4 },
+            { "TownSquare",1 },
+            { "Dock",7 },
+            { "Temple",5 },
+            { "Forest",15 },
+            { "Mine",18 },
+            { "Barracks",9 },
+            { "Gate",2 },
+            { "Bridge",3 },
+            { "Stables",4 },
+            { "Gardens",5 },
+            { "Library",6 },
+            { "GuildHall",7 },
+            { "Slums",3 },
+            { "NobleQuarter",10 },
+            { "EastGate",8 },
+            { "WestGate",8 },
+            { "SouthGate",9 },
+            { "NorthGate",11 },
+            { "StoneBridge",3 },
+            { "RiverBank",6 },
+            { "Lighthouse",14 },
+            { "Windmill",5 },
+            { "Orchard",7 },
+            { "FishMarket",2 },
+            { "HarborMarket",8 }
+        };
+
         public Sprite GetCurrencySprite(ECurrencyType currencyType) => _currencySprites[currencyType];
 
         public Sprite GetDriverPortrait(string driverName) => _driverPortraits[driverName];
@@ -56,6 +94,20 @@ namespace Scriptables.Singletons
                 if (_maleClientNames == null || _maleClientNames.Count ==0) return string.Empty;
                 return _maleClientNames[Random.Range(0, _maleClientNames.Count)];
             }
+        }
+
+        // Destination accessors
+        public IReadOnlyList<string> GetAllDestinations()
+        {
+            if (_destinationsDistances == null) return new List<string>();
+            return _destinationsDistances.Keys.ToList();
+        }
+
+        public bool TryGetDestinationDistance(string destination, out int distance)
+        {
+            distance =0;
+            if (_destinationsDistances == null) return false;
+            return _destinationsDistances.TryGetValue(destination, out distance);
         }
     }
 }

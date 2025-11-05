@@ -171,14 +171,39 @@ namespace Modules.ClientSystem.Components
             bool hasJob = job != null;
             EJobState state = hasJob ? job.State : EJobState.Waiting;
 
-            // Waiting group
-            bool showWaiting = hasJob && state == EJobState.Waiting;
-            if (_clientDestinationText != null) _clientDestinationText.gameObject.SetActive(showWaiting);
-            if (_clientDistanceText != null) _clientDistanceText.gameObject.SetActive(showWaiting);
-            if (_clientPrizeText != null) _clientPrizeText.gameObject.SetActive(showWaiting);
-            if (_acceptButton != null) _acceptButton.gameObject.SetActive(showWaiting);
-            if (_rejectButton != null) _rejectButton.gameObject.SetActive(showWaiting);
-            if (_newIndicator != null) _newIndicator.SetActive(showWaiting);
+            // Delegate to state-specific handler
+            ApplyState(job, state);
+        }
+
+        // New method to centralize state-based visual updates.
+        private void ApplyState(Job job, EJobState state)
+        {
+            SetWaitingActive(false);
+            SetAcceptedActive(false);
+
+            if (job == null)
+            {
+                // No job: nothing to show
+                return;
+            }
+
+            switch (state)
+            {
+                case EJobState.Waiting:
+                    Waiting(job);
+                    break;
+                case EJobState.Accepted:
+                    Accepted(job);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void Waiting(Job job)
+        {
+            bool showWaiting = true;
+            SetWaitingActive(showWaiting);
 
             if (showWaiting)
             {
@@ -187,13 +212,14 @@ namespace Modules.ClientSystem.Components
                 if (_clientPrizeText != null) _clientPrizeText.text = $"{job.BaseReward:F0}";
             }
 
-            // Accepted group
-            bool showAccepted = hasJob && state == EJobState.Accepted;
-            if (_acceptedIndicator != null) _acceptedIndicator.SetActive(showAccepted);
-            if (_cancelButton != null) _cancelButton.gameObject.SetActive(showAccepted);
-            if (_instantFinishButton != null) _instantFinishButton.gameObject.SetActive(showAccepted);
-            if (_remainingTimeText != null) _remainingTimeText.gameObject.SetActive(showAccepted && job.IsActive);
-            if (_assignedDriverNameText != null) _assignedDriverNameText.gameObject.SetActive(showAccepted && job.IsActive);
+            if (_assignedDriverNameText != null) _assignedDriverNameText.text = string.Empty;
+            if (_remainingTimeText != null) _remainingTimeText.text = string.Empty;
+        }
+
+        private void Accepted(Job job)
+        {
+            bool showAccepted = true;
+            SetAcceptedActive(showAccepted);
 
             if (showAccepted && job.IsActive)
             {
@@ -207,10 +233,29 @@ namespace Modules.ClientSystem.Components
             }
         }
 
+        private void SetWaitingActive(bool active)
+        {
+            if (_clientDestinationText != null) _clientDestinationText.gameObject.SetActive(active);
+            if (_clientDistanceText != null) _clientDistanceText.gameObject.SetActive(active);
+            if (_clientPrizeText != null) _clientPrizeText.gameObject.SetActive(active);
+            if (_acceptButton != null) _acceptButton.gameObject.SetActive(active);
+            if (_rejectButton != null) _rejectButton.gameObject.SetActive(active);
+            if (_newIndicator != null) _newIndicator.SetActive(active);
+        }
+
+        private void SetAcceptedActive(bool active)
+        {
+            if (_acceptedIndicator != null) _acceptedIndicator.SetActive(active);
+            if (_cancelButton != null) _cancelButton.gameObject.SetActive(active);
+            if (_instantFinishButton != null) _instantFinishButton.gameObject.SetActive(active);
+            if (_remainingTimeText != null) _remainingTimeText.gameObject.SetActive(active);
+            if (_assignedDriverNameText != null) _assignedDriverNameText.gameObject.SetActive(active);
+        }
+
         private void OnAcceptClicked()
         {
             if (_client == null) return;
-            ClientManager.AcceptClientJob(_client);
+            EventManager.DelegateShowTaxisRequested(_client);
         }
 
         private void OnRejectClicked()

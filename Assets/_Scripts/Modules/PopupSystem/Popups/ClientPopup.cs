@@ -1,32 +1,40 @@
-using Modules.PopupSystem.Components;
-using UnityEngine;
-using System.Collections.Generic;
-using Modules.ClientSystem.Managers;
-using Modules.ClientSystem.Components;
+using Components.Constants;
 using Cysharp.Threading.Tasks;
 using Modules.AdressableSystem;
-using Components.Constants;
-using Modules.ObjectPoolSystem;
-using Modules.Logger;
+using Modules.ClientSystem.Components;
+using Modules.ClientSystem.Managers;
 using Modules.EventSystem.Managers;
+using Modules.Logger;
+using Modules.ObjectPoolSystem;
+using Modules.PopupSystem.Components;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using Modules.ClientSystem.Models;
+using TMPro;
 
 namespace Modules.PopupSystem.Popups
 {
     public class ClientPopup : BasePopup
     {
         [SerializeField] private Transform _clientItemHolder;
+        [SerializeField] private ScrollRect _scrollRect;
+        [BHeader("Taxis")]
+        [SerializeField] private GameObject _taxiHolder;
+        [SerializeField] private TMP_Text _taxiHeaderText;
 
         private readonly List<ClientItem> _spawnedItems = new List<ClientItem>();
         private readonly Dictionary<string, ClientItem> _itemsByClientId = new Dictionary<string, ClientItem>();
 
+        // store client for which we opened the taxi selector
+        private Client _selectedClientForTaxi;
+
         public override void Init()
         {
-            base.Init();
-
             if (_clientItemHolder != null)
             {
                 var ap = _clientItemHolder.transform.localPosition;
-                ap.y =0f;
+                ap.y = 0f;
                 _clientItemHolder.transform.localPosition = ap;
             }
 
@@ -35,7 +43,16 @@ namespace Modules.PopupSystem.Popups
 
         public override void Activate()
         {
+            if (_scrollRect != null)
+            {
+                _scrollRect.StopMovement();
+                _scrollRect.velocity = Vector2.zero;
+                _scrollRect.enabled = false;
+            }
+
             base.Activate();
+
+            EventManager.OnShowTaxisRequested += OnShowTaxisRequested;
             EventManager.OnClientJobCreated += OnClientJobCreated;
             EventManager.OnClientJobAccepted += OnClientJobAccepted;
             EventManager.OnClientJobRejected += OnClientJobRejected;
@@ -44,10 +61,19 @@ namespace Modules.PopupSystem.Popups
 
         public override void Deactivate()
         {
+            EventManager.OnShowTaxisRequested -= OnShowTaxisRequested;
             EventManager.OnClientJobCreated -= OnClientJobCreated;
             EventManager.OnClientJobAccepted -= OnClientJobAccepted;
             EventManager.OnClientJobRejected -= OnClientJobRejected;
             EventManager.OnJobCancelled -= OnJobCancelled;
+
+            if (_scrollRect != null)
+            {
+                _scrollRect.verticalNormalizedPosition = 1f;
+                _scrollRect.velocity = Vector2.zero;
+                _scrollRect.enabled = true;
+            }
+
             base.Deactivate();
         }
 
@@ -67,6 +93,9 @@ namespace Modules.PopupSystem.Popups
         {
             // remove the client's item
             RemoveClientItem(client?.Id);
+
+            if (_selectedClientForTaxi != null && client.Id == _selectedClientForTaxi.Id)
+                OnHideTaxisRequested();
         }
 
         private void OnJobCancelled(Modules.JobSystem.Models.Job job)
@@ -82,7 +111,7 @@ namespace Modules.PopupSystem.Popups
             if (_clientItemHolder != null)
             {
                 var ap0 = _clientItemHolder.transform.localPosition;
-                ap0.y =0f;
+                ap0.y = 0f;
                 _clientItemHolder.transform.localPosition = ap0;
             }
 
@@ -97,7 +126,7 @@ namespace Modules.PopupSystem.Popups
 
             // Use ActiveClients to populate
             var clients = ClientManager.ActiveClients;
-            if (clients == null || clients.Count ==0) return;
+            if (clients == null || clients.Count == 0) return;
 
             foreach (var client in clients)
             {
@@ -183,7 +212,7 @@ namespace Modules.PopupSystem.Popups
             }
         }
 
-        public void ClearClients()
+        private void ClearClients()
         {
             foreach (var it in _spawnedItems)
             {
@@ -193,6 +222,34 @@ namespace Modules.PopupSystem.Popups
 
             _spawnedItems.Clear();
             _itemsByClientId.Clear();
+        }
+
+        private void OnShowTaxisRequested(Client client)
+        {
+            _selectedClientForTaxi = client;
+            if (_taxiHolder != null)
+                _taxiHolder.SetActive(true);
+
+            if (_taxiHeaderText != null)
+                _taxiHeaderText.text = $"Select a taxi for {client.Name}";
+        }
+
+        private void OnHideTaxisRequested()
+        {
+            _selectedClientForTaxi = null;
+
+            if (_taxiHolder != null)
+                _taxiHolder.SetActive(false);
+        }
+
+        protected override void OnAfterShow()
+        {
+            if (_scrollRect != null)
+            {
+                _scrollRect.verticalNormalizedPosition = 1f;
+                _scrollRect.velocity = Vector2.zero;
+                _scrollRect.enabled = true;
+            }
         }
 
         protected override void OnAfterClose()

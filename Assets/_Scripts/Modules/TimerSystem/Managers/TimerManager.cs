@@ -64,7 +64,7 @@ namespace Modules.TimerSystem.Managers
                     Interlocked.Increment(ref _currentTimeUnix);
 
                     // Trigger global timer tick event
-                    EventManager.TriggerTimerTick(CurrentTime);
+                    EventManager.DelegateTimerTick(CurrentTime);
                 }
             }
             catch (OperationCanceledException)

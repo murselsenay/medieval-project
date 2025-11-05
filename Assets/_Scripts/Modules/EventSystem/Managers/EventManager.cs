@@ -29,6 +29,9 @@ namespace Modules.EventSystem.Managers
 
         // Job lifecycle
         public static event Action<Modules.JobSystem.Models.Job> OnJobCancelled;
+
+        // UI requests
+        public static event Action<Client> OnShowTaxisRequested;
         #endregion
 
         #region Methods
@@ -140,14 +143,15 @@ namespace Modules.EventSystem.Managers
             catch { }
         }
 
-        // Backwards-compatible Trigger* wrappers
-        public static void TriggerTimerTick(long unixTime) => DelegateTimerTick(unixTime);
-        public static void TriggerJobAssigned(Modules.JobSystem.Models.Job job) => DelegateJobAssigned(job);
-        public static void TriggerJobUnassigned(Modules.JobSystem.Models.Job job) => DelegateJobUnassigned(job);
-        public static void TriggerClientJobCreated(Client client, Modules.JobSystem.Models.Job job) => DelegateClientJobCreated(client, job);
-        public static void TriggerClientJobAccepted(Client client, Modules.JobSystem.Models.Job job) => DelegateClientJobAccepted(client, job);
-        public static void TriggerClientJobRejected(Client client) => DelegateClientJobRejected(client);
-        public static void TriggerJobCancelled(Modules.JobSystem.Models.Job job) => DelegateJobCancelled(job);
+        public static void DelegateShowTaxisRequested(Client client)
+        {
+            try
+            {
+                OnShowTaxisRequested?.Invoke(client);
+            }
+            catch { }
+        }
+
         #endregion
     }
 }

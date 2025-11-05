@@ -136,24 +136,57 @@ namespace Modules.ClientSystem.Managers
         public static void Tick(long currentUnix)
         {
             if (AllClients == null || AllClients.Count == 0) return;
-            int attempts = UnityEngine.Random.Range(1, 4);
+            int attempts = UnityEngine.Random.Range(3, 7);
             for (int i = 0; i < attempts; i++)
             {
                 var c = AllClients[UnityEngine.Random.Range(0, AllClients.Count)];
                 if (c.CanGenerateJob(currentUnix))
                 {
                     c.TripJob = CreateTripJobForClient(c);
-                    EventManager.TriggerClientJobCreated(c, c.TripJob);
+                    EventManager.DelegateClientJobCreated(c, c.TripJob);
                 }
             }
         }
 
         private static Job CreateTripJobForClient(Client client)
         {
-            var dests = new[] { "Tavern", "Market", "Harbor", "Castle", "Fields" };
-            var loc = dests[UnityEngine.Random.Range(0, dests.Length)];
+            var rw = ResourceWarehouse.Instance;
+            List<string> destList = null;
+            if (rw != null)
+            {
+                try
+                {
+                    destList = rw.GetAllDestinations()?.ToList();
+                }
+                catch { destList = null; }
+            }
+
+            string loc;
+            float distance;
+
+            if (destList != null && destList.Count > 0)
+            {
+                loc = destList[UnityEngine.Random.Range(0, destList.Count)];
+                if (!rw.TryGetDestinationDistance(loc, out int distInt))
+                {
+                    // fallback random distance
+                    distance = UnityEngine.Random.Range(1f, 30f);
+                }
+                else
+                {
+                    // add small random variation up to +-20%
+                    float variation = UnityEngine.Random.Range(0.8f, 1.2f);
+                    distance = distInt * variation;
+                }
+            }
+            else
+            {
+                var dests = new[] { "Tavern", "Market", "Harbor", "Castle", "Fields" };
+                loc = dests[UnityEngine.Random.Range(0, dests.Length)];
+                distance = UnityEngine.Random.Range(1f, 30f);
+            }
+
             var difficulty = GetRandomDifficulty();
-            float distance = UnityEngine.Random.Range(1f, 30f);
             int pax = 1;
             float reward = distance * 2.5f;
             float fuel = distance * 0.1f;
@@ -175,7 +208,7 @@ namespace Modules.ClientSystem.Managers
             if (client == null || client.TripJob == null) return;
             client.TripJob.SetState(EJobState.Accepted);
             JobManager.AddAcceptedJob(client.TripJob);
-            EventManager.TriggerClientJobAccepted(client, client.TripJob);
+            EventManager.DelegateClientJobAccepted(client, client.TripJob);
         }
 
         public static void RejectClientJob(Client client, long currentUnix, int cooldownSeconds = 60)
@@ -187,7 +220,7 @@ namespace Modules.ClientSystem.Managers
             try { JobManager.AcceptedJobs?.RemoveAll(j => j != null && j.Id == client.TripJob.Id); } catch { }
             client.TripJob = null;
             client.CooldownUntilUnix = currentUnix + cooldownSeconds;
-            EventManager.TriggerClientJobRejected(client);
+            EventManager.DelegateClientJobRejected(client);
         }
 
         public static void CancelAcceptedJob(Job job)
@@ -198,7 +231,7 @@ namespace Modules.ClientSystem.Managers
             try { JobManager.AcceptedJobs?.RemoveAll(j => j != null && j.Id == job.Id); } catch { }
 
             // Trigger cancellation event while owner still references the job so listeners can find owner by job id
-            EventManager.TriggerJobCancelled(job);
+            EventManager.DelegateJobCancelled(job);
 
             // remove job reference from its owner client
             var owner = AllClients?.FirstOrDefault(c => c.TripJob != null && c.TripJob.Id == job.Id);
