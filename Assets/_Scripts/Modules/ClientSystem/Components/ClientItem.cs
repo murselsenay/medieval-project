@@ -1,17 +1,21 @@
-using Modules.ObjectPoolSystem;
-using TMPro;
-using UnityEngine;
-using UnityEngine.UI;
-using Modules.ClientSystem.Models;
 using Modules.ClientSystem.Managers;
-using Modules.JobSystem.Models;
-using Modules.EventSystem.Managers;
-using System;
+using Modules.ClientSystem.Models;
 using Modules.DriverSystem.Managers;
 using Modules.DriverSystem.Models;
-using Scriptables.Singletons;
-using System.Linq;
+using Modules.EventSystem.Managers;
 using Modules.JobSystem.Enums;
+using Modules.JobSystem.Models;
+using Modules.ObjectPoolSystem;
+using Modules.TaxiSystem.Managers;
+using Modules.TaxiSystem.Models;
+using Scriptables.Singletons;
+using System;
+using System.Linq;
+using TMPro;
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.UI;
+using Utilities;
 
 namespace Modules.ClientSystem.Components
 {
@@ -35,6 +39,9 @@ namespace Modules.ClientSystem.Components
         [SerializeField] private GameObject _acceptedIndicator;
         [SerializeField] private Button _cancelButton;
         [SerializeField] private Button _instantFinishButton;
+
+        [Header("Completed")]
+        [SerializeField] private ButtonAnimate _claimButton;
 
         private Client _client;
 
@@ -89,9 +96,6 @@ namespace Modules.ClientSystem.Components
             EventManager.OnClientJobCreated += OnClientJobCreated;
             EventManager.OnClientJobAccepted += OnClientJobAccepted;
             EventManager.OnClientJobRejected += OnClientJobRejected;
-            EventManager.OnJobAssigned += OnJobAssigned;
-            EventManager.OnJobUnassigned += OnJobUnassigned;
-            EventManager.OnJobCancelled += OnJobCancelled;
             EventManager.OnTimerTick += OnTimerTick;
         }
 
@@ -100,9 +104,6 @@ namespace Modules.ClientSystem.Components
             EventManager.OnClientJobCreated -= OnClientJobCreated;
             EventManager.OnClientJobAccepted -= OnClientJobAccepted;
             EventManager.OnClientJobRejected -= OnClientJobRejected;
-            EventManager.OnJobAssigned -= OnJobAssigned;
-            EventManager.OnJobUnassigned -= OnJobUnassigned;
-            EventManager.OnJobCancelled -= OnJobCancelled;
             EventManager.OnTimerTick -= OnTimerTick;
 
             ClientId = null;
@@ -129,32 +130,7 @@ namespace Modules.ClientSystem.Components
         {
             if (_client == null) return;
             if (client.Id != _client.Id) return;
-            // Trip job removed by manager
             UpdateVisuals();
-        }
-
-        private void OnJobAssigned(Job job)
-        {
-            if (_client == null || _client.TripJob == null) return;
-            if (job.Id != _client.TripJob.Id) return;
-            UpdateVisuals();
-        }
-
-        private void OnJobUnassigned(Job job)
-        {
-            if (_client == null || _client.TripJob == null) return;
-            if (job.Id != _client.TripJob.Id) return;
-            UpdateVisuals();
-        }
-
-        private void OnJobCancelled(Job job)
-        {
-            if (_client == null) return;
-            if (_client.TripJob != null && job.Id == _client.TripJob.Id)
-            {
-                _client.TripJob = null; // removed by manager as well
-                UpdateVisuals();
-            }
         }
 
         private void UpdateVisuals()
@@ -171,15 +147,14 @@ namespace Modules.ClientSystem.Components
             bool hasJob = job != null;
             EJobState state = hasJob ? job.State : EJobState.Waiting;
 
-            // Delegate to state-specific handler
             ApplyState(job, state);
         }
 
-        // New method to centralize state-based visual updates.
         private void ApplyState(Job job, EJobState state)
         {
             SetWaitingActive(false);
             SetAcceptedActive(false);
+            SetCompletedActive(false);
 
             if (job == null)
             {
@@ -194,6 +169,9 @@ namespace Modules.ClientSystem.Components
                     break;
                 case EJobState.Accepted:
                     Accepted(job);
+                    break;
+                case EJobState.Completed:
+                    Completed(job);
                     break;
                 default:
                     break;
@@ -233,6 +211,36 @@ namespace Modules.ClientSystem.Components
             }
         }
 
+        private void Completed(Job job)
+        {
+            // Show completed UI but keep assigned driver name and remaining time visible
+            SetWaitingActive(false);
+            SetAcceptedActive(false);
+            SetCompletedActive(true);
+
+            if (_remainingTimeText != null)
+            {
+                _remainingTimeText.gameObject.SetActive(true);
+                _remainingTimeText.text = "Completed";
+            }
+
+            if (_assignedDriverNameText != null)
+            {
+                _assignedDriverNameText.gameObject.SetActive(true);
+                var assigned = DriverManager.Drivers?.FirstOrDefault(d => d.CurrentJob != null && d.CurrentJob.Id == job.Id);
+                if (assigned != null) _assignedDriverNameText.text = assigned.DriverName;
+                else
+                {
+                    // try to find driver by lookups if CurrentJob cleared; search drivers by name matching taxi assignment
+                    var taxi = TaxiManager.OwnedTaxis?.FirstOrDefault(t => t != null && t.Client != null && t.Client.TripJob != null && t.Client.TripJob.Id == job.Id);
+                    if (taxi != null && taxi.Driver != null)
+                        _assignedDriverNameText.text = taxi.Driver.DriverName;
+                }
+            }
+
+            _claimButton.SetText($"Claim {job.BaseReward:F0}");
+        }
+
         private void SetWaitingActive(bool active)
         {
             if (_clientDestinationText != null) _clientDestinationText.gameObject.SetActive(active);
@@ -252,6 +260,11 @@ namespace Modules.ClientSystem.Components
             if (_assignedDriverNameText != null) _assignedDriverNameText.gameObject.SetActive(active);
         }
 
+        private void SetCompletedActive(bool active)
+        {
+            if (_claimButton != null) _claimButton.gameObject.SetActive(active);
+        }
+
         private void OnAcceptClicked()
         {
             if (_client == null) return;
@@ -268,41 +281,71 @@ namespace Modules.ClientSystem.Components
         private void OnCancelClicked()
         {
             if (_client == null || _client.TripJob == null) return;
+
+            // find taxi assigned to this client and ask it to cancel
+            var taxi = TaxiManager.OwnedTaxis?.FirstOrDefault(t => t != null && t.Client != null && t.Client.Id == _client.Id);
+            if (taxi != null)
+            {
+                taxi.Cancel(_client);
+                return;
+            }
+
+            // fallback to client manager cancel to ensure cleanup
             ClientManager.CancelAcceptedJob(_client.TripJob);
         }
 
         private void OnInstantFinishClicked()
         {
             if (_client == null || _client.TripJob == null) return;
+
+            var taxi = TaxiManager.OwnedTaxis?.FirstOrDefault(t => t != null && t.Client != null && t.Client.Id == _client.Id);
+            if (taxi != null)
+            {
+                taxi.Cancel(_client);
+                return;
+            }
+
             ClientManager.CancelAcceptedJob(_client.TripJob);
         }
 
         private void OnTimerTick(long unixTime)
         {
-            if (_client == null || _client.TripJob == null) return;
+            if (_client == null) return;
             var job = _client.TripJob;
-            if (!job.IsActive)
+            if (job == null) return;
+
+            // If job already completed, ensure UI shows it
+            if (job.State == EJobState.Completed)
+            {
+                if (_remainingTimeText != null) _remainingTimeText.text = "Completed";
+                UpdateVisuals();
+                return;
+            }
+
+            var assignedDriver = DriverManager.Drivers?.FirstOrDefault(d => d.CurrentJob != null && d.CurrentJob.Id == job.Id);
+            if (assignedDriver == null)
             {
                 if (_remainingTimeText != null) _remainingTimeText.text = string.Empty;
                 return;
             }
 
-            var assignedDriver = DriverManager.Drivers?.FirstOrDefault(d => d.CurrentJob != null && d.CurrentJob.Id == job.Id);
-            if (assignedDriver == null) return;
-
             float elapsed = (float)(unixTime - assignedDriver.JobStartUnix);
             float remaining = job.BaseDuration - elapsed;
-            if (_remainingTimeText != null)
+
+            if (_remainingTimeText == null) return;
+
+            if (remaining <= 0f)
             {
-                if (remaining <= 0)
-                    _remainingTimeText.text = "0:00";
-                else
-                {
-                    int s = Mathf.CeilToInt(remaining);
-                    int mins = s / 60;
-                    int secs = s % 60;
-                    _remainingTimeText.text = string.Format("{0}:{1:00}", mins, secs);
-                }
+                _remainingTimeText.text = "Completed";
+                // Trigger a full visual refresh so Completed state is applied
+                UpdateVisuals();
+            }
+            else
+            {
+                int s = Mathf.CeilToInt(remaining);
+                int mins = s / 60;
+                int secs = s % 60;
+                _remainingTimeText.text = string.Format("{0}:{1:00}", mins, secs);
             }
         }
     }

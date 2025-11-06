@@ -1,26 +1,30 @@
 using Components.Constants;
 using Cysharp.Threading.Tasks;
-using Modules.AdressableSystem;
 using Modules.ClientSystem.Components;
 using Modules.ClientSystem.Managers;
 using Modules.EventSystem.Managers;
 using Modules.Logger;
 using Modules.ObjectPoolSystem;
 using Modules.PopupSystem.Components;
+using Modules.TaxiSystem.Components;
+using Modules.TaxiSystem.Managers;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using Modules.ClientSystem.Models;
 using TMPro;
 
 namespace Modules.PopupSystem.Popups
 {
-    public class ClientPopup : BasePopup
+    public class ClientPopup : BasePopup, IPointerClickHandler
     {
         [SerializeField] private Transform _clientItemHolder;
         [SerializeField] private ScrollRect _scrollRect;
         [BHeader("Taxis")]
-        [SerializeField] private GameObject _taxiHolder;
+        [SerializeField] private Transform _taxiHolder;
+        [SerializeField] private ScrollRect _taxiView;
         [SerializeField] private TMP_Text _taxiHeaderText;
 
         private readonly List<ClientItem> _spawnedItems = new List<ClientItem>();
@@ -29,12 +33,15 @@ namespace Modules.PopupSystem.Popups
         // store client for which we opened the taxi selector
         private Client _selectedClientForTaxi;
 
+        // spawned taxi items
+        private readonly List<TaxiSelectionItem> _spawnedTaxiItems = new List<TaxiSelectionItem>();
+
         public override void Init()
         {
             if (_clientItemHolder != null)
             {
                 var ap = _clientItemHolder.transform.localPosition;
-                ap.y = 0f;
+                ap.y =0f;
                 _clientItemHolder.transform.localPosition = ap;
             }
 
@@ -69,7 +76,7 @@ namespace Modules.PopupSystem.Popups
 
             if (_scrollRect != null)
             {
-                _scrollRect.verticalNormalizedPosition = 1f;
+                _scrollRect.verticalNormalizedPosition =1f;
                 _scrollRect.velocity = Vector2.zero;
                 _scrollRect.enabled = true;
             }
@@ -87,6 +94,17 @@ namespace Modules.PopupSystem.Popups
         {
             // update existing item visuals for accepted state
             UpdateClientItem(client);
+
+            // if taxi view is open, refresh taxi list so assigned taxis are removed
+            if (_taxiView != null && _taxiView.gameObject.activeInHierarchy)
+            {
+                // refresh for currently selected client (may be null)
+                if (_selectedClientForTaxi != null)
+                    PopulateTaxisForClient(_selectedClientForTaxi).Forget();
+            }
+
+            if (_selectedClientForTaxi != null && client.Id == _selectedClientForTaxi.Id)
+                OnHideTaxisRequested();
         }
 
         private void OnClientJobRejected(Modules.ClientSystem.Models.Client client)
@@ -104,6 +122,10 @@ namespace Modules.PopupSystem.Popups
             // find owner client and remove its item
             var owner = ClientManager.AllClients?.Find(c => c != null && c.TripJob != null && c.TripJob.Id == job.Id);
             if (owner != null) RemoveClientItem(owner.Id);
+
+            // if taxi view is open, refresh taxi list as cancellations may free taxis
+            if (_taxiView != null && _taxiView.gameObject.activeInHierarchy && _selectedClientForTaxi != null)
+                PopulateTaxisForClient(_selectedClientForTaxi).Forget();
         }
 
         public async UniTask PopulateClients()
@@ -111,7 +133,7 @@ namespace Modules.PopupSystem.Popups
             if (_clientItemHolder != null)
             {
                 var ap0 = _clientItemHolder.transform.localPosition;
-                ap0.y = 0f;
+                ap0.y =0f;
                 _clientItemHolder.transform.localPosition = ap0;
             }
 
@@ -126,7 +148,7 @@ namespace Modules.PopupSystem.Popups
 
             // Use ActiveClients to populate
             var clients = ClientManager.ActiveClients;
-            if (clients == null || clients.Count == 0) return;
+            if (clients == null || clients.Count ==0) return;
 
             foreach (var client in clients)
             {
@@ -227,26 +249,91 @@ namespace Modules.PopupSystem.Popups
         private void OnShowTaxisRequested(Client client)
         {
             _selectedClientForTaxi = client;
-            if (_taxiHolder != null)
-                _taxiHolder.SetActive(true);
+            if (_taxiView != null)
+                _taxiView.gameObject.SetActive(true);
 
             if (_taxiHeaderText != null)
                 _taxiHeaderText.text = $"Select a taxi for {client.Name}";
+
+            // populate taxi selection items
+            PopulateTaxisForClient(client).Forget();
         }
 
         private void OnHideTaxisRequested()
         {
             _selectedClientForTaxi = null;
 
+            if (_taxiView != null)
+                _taxiView.gameObject.SetActive(false);
+
+            ClearTaxiItems();
+        }
+
+        private async UniTask PopulateTaxisForClient(Client client)
+        {
+            if (client == null) return;
+            if (_taxiHolder == null) return;
+
+            ClearTaxiItems();
+
+            var addressToUse = AddressableKeys.TaxiSelectionItem;
+            if (string.IsNullOrEmpty(addressToUse))
+            {
+                DebugLogger.LogError("ClientPopup: TaxiSelectionItem address key is not assigned.");
+                return;
+            }
+
+            var taxis = TaxiManager.OwnedTaxis;
+            if (taxis == null || taxis.Count ==0) return;
+
+            // show all taxis (busy ones remain visible but will be non-interactable)
+            var available = taxis.Where(t => t != null).ToList();
+
+            foreach (var taxi in available)
+            {
+                TaxiSelectionItem item = null;
+                try
+                {
+                    item = await ObjectPool.GetObjectAsync<TaxiSelectionItem>(_taxiHolder, addressToUse);
+                }
+                catch
+                {
+                    item = null;
+                }
+
+                if (item == null) continue;
+
+                // ensure parent
+                if (_taxiHolder != null && item.transform.parent != _taxiHolder)
+                    item.transform.SetParent(_taxiHolder, false);
+
+                item.Init(taxi, client);
+                _spawnedTaxiItems.Add(item);
+            }
+
             if (_taxiHolder != null)
-                _taxiHolder.SetActive(false);
+            {
+                Canvas.ForceUpdateCanvases();
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(_taxiHolder as RectTransform);
+            }
+        }
+
+        private void ClearTaxiItems()
+        {
+            foreach (var it in _spawnedTaxiItems)
+            {
+                if (it == null) continue;
+                try { ObjectPool.ReturnToPool(it); } catch { if (it.gameObject != null) UnityEngine.Object.Destroy(it.gameObject); }
+            }
+
+            _spawnedTaxiItems.Clear();
         }
 
         protected override void OnAfterShow()
         {
             if (_scrollRect != null)
             {
-                _scrollRect.verticalNormalizedPosition = 1f;
+                _scrollRect.verticalNormalizedPosition =1f;
                 _scrollRect.velocity = Vector2.zero;
                 _scrollRect.enabled = true;
             }
@@ -255,11 +342,37 @@ namespace Modules.PopupSystem.Popups
         protected override void OnAfterClose()
         {
             ClearClients();
+            ClearTaxiItems();
         }
 
         private void OnDestroy()
         {
             ClearClients();
+            ClearTaxiItems();
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            // Check if the click is outside the taxi view
+            if (_taxiView != null && _taxiView.gameObject.activeInHierarchy)
+            {
+                var pos = eventData.position;
+                // Use RectangleContainsScreenPoint to check click against taxi view rect
+                if (_taxiView.viewport != null)
+                {
+                    if (!RectTransformUtility.RectangleContainsScreenPoint(_taxiView.viewport, pos, eventData.pressEventCamera))
+                    {
+                        OnHideTaxisRequested();
+                    }
+                }
+                else if (_taxiView.content != null)
+                {
+                    if (!RectTransformUtility.RectangleContainsScreenPoint(_taxiView.content, pos, eventData.pressEventCamera))
+                    {
+                        OnHideTaxisRequested();
+                    }
+                }
+            }
         }
     }
 }

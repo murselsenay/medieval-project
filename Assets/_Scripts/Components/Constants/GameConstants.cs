@@ -23,5 +23,6 @@ namespace Components.Constants
         public static string JobItem = "job-item";
         public static string DriverStatusItem = "driver-status-item";
         public static string ClientItem = "client-item";
+        public static string TaxiSelectionItem = "taxi-selection-item";
     }
 }

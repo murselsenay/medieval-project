@@ -23,10 +23,10 @@ namespace Modules.DriverSystem.Managers
             };
         }
 
-        public static IEnumerable<Driver> GetAvailableDrivers()
+        public static List<Driver> GetAvailableDrivers()
         {
-            if (_drivers == null) yield break;
-            foreach (var d in _drivers.Where(x => !x.IsOnJob)) yield return d;
+            if (_drivers == null) return new List<Driver>();
+            return _drivers.Where(x => !x.IsOnJob).ToList();
         }
 
         public static Driver GetDriverByName(string name)

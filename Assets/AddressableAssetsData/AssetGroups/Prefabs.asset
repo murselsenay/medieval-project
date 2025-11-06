@@ -25,19 +25,19 @@ MonoBehaviour:
     - currency-gold
     - prefabs
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3254ebc00213b5b49ab23e4860ad7ef9
-    m_Address: Driver_Status_Item
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - driver-status-item
-    - prefabs
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 467d4dc6b49ec4a499f08cbc8017ebf4
     m_Address: Client_Item
     m_ReadOnly: 0
     m_SerializedLabels:
     - client-item
     - prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bacef9569d43a8c4cb1c9d8e04b75d92
+    m_Address: Taxi_Selection_Item
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - prefabs
+    - taxi-selection-item
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c0abfb4d26a6b1246a420f9217d29ba0
     m_Address: Job_Item

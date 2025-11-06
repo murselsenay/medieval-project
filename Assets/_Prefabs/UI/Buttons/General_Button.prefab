@@ -96,6 +96,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _button: {fileID: 950931709147355067}
+  _buttonText: {fileID: 2757006211071976750}
   _pressedScale: 0.95
   _animDuration: 0.08
   _disabledTextColor: {r: 0.45, g: 0.45, b: 0.45, a: 1}

@@ -34,7 +34,17 @@ MonoBehaviour:
     - Key: Speedy Driver2
       Value: {fileID: 21300000, guid: ad097ed84bc3c5f4a9369509304dfb9a, type: 3}
   _vehicleSprites:
-    _serializedList: []
+    _serializedList:
+    - Key: 0
+      Value: {fileID: 21300000, guid: b5c7ec0008c9c524887c065148571675, type: 3}
+    - Key: 1
+      Value: {fileID: 21300000, guid: b116d0400d578244db13178ff04cf083, type: 3}
+    - Key: 2
+      Value: {fileID: 21300000, guid: 2e13929306131374fa36f5170cd9ae83, type: 3}
+    - Key: 3
+      Value: {fileID: 21300000, guid: 9af77f2d14692bd42a0c5f2fefe22071, type: 3}
+    - Key: 4
+      Value: {fileID: 21300000, guid: 67230319137307748a62c5b99046b459, type: 3}
   _clientPortraits:
     _serializedList:
     - Key: Ayse
@@ -75,3 +85,67 @@ MonoBehaviour:
   - Deniz
   - Umut
   - Mert
+  _destinationsDistances:
+    _serializedList:
+    - Key: Tavern
+      Value: 3
+    - Key: Market
+      Value: 2
+    - Key: Harbor
+      Value: 8
+    - Key: Castle
+      Value: 12
+    - Key: Fields
+      Value: 6
+    - Key: Mill
+      Value: 4
+    - Key: TownSquare
+      Value: 1
+    - Key: Dock
+      Value: 7
+    - Key: Temple
+      Value: 5
+    - Key: Forest
+      Value: 15
+    - Key: Mine
+      Value: 18
+    - Key: Barracks
+      Value: 9
+    - Key: Gate
+      Value: 2
+    - Key: Bridge
+      Value: 3
+    - Key: Stables
+      Value: 4
+    - Key: Gardens
+      Value: 5
+    - Key: Library
+      Value: 6
+    - Key: GuildHall
+      Value: 7
+    - Key: Slums
+      Value: 3
+    - Key: NobleQuarter
+      Value: 10
+    - Key: EastGate
+      Value: 8
+    - Key: WestGate
+      Value: 8
+    - Key: SouthGate
+      Value: 9
+    - Key: NorthGate
+      Value: 11
+    - Key: StoneBridge
+      Value: 3
+    - Key: RiverBank
+      Value: 6
+    - Key: Lighthouse
+      Value: 14
+    - Key: Windmill
+      Value: 5
+    - Key: Orchard
+      Value: 7
+    - Key: FishMarket
+      Value: 2
+    - Key: HarborMarket
+      Value: 8

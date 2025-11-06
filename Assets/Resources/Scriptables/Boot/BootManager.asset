@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: BootManager
   m_EditorClassIdentifier: 
   Steps:
+  - {fileID: 11400000, guid: 8153045e862c6084d8b284dc80cf83ac, type: 2}
   - {fileID: 11400000, guid: 66251bd7c0a20224faf7fc11f59ea772, type: 2}
   - {fileID: 11400000, guid: a9fc01d8e554ef545be3e302f17cecc7, type: 2}
   - {fileID: 11400000, guid: 1b9a5f9a64533764a97cdba8ddd0c57f, type: 2}

@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-namespace Modules.VehicleSystem.Enums
+namespace Modules.TaxiSystem.Enums
 {
-    public enum EVehicleType
+    public enum ETaxiType
     {
         Mobilet,
         Classic,

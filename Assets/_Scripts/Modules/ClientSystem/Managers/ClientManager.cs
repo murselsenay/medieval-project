@@ -5,7 +5,6 @@ using Modules.ClientSystem.Models;
 using Modules.ClientSystem.Enums;
 using Modules.JobSystem.Models;
 using Modules.JobSystem.Enums;
-using Modules.JobSystem.Managers;
 using Modules.EventSystem.Managers;
 using UnityEngine;
 using Scriptables.Singletons;
@@ -190,7 +189,8 @@ namespace Modules.ClientSystem.Managers
             int pax = 1;
             float reward = distance * 2.5f;
             float fuel = distance * 0.1f;
-            float duration = (distance / 40f) * 3600f;
+            // Temporary: set job duration to60 seconds for testing
+            float duration = 60f;
             var job = new Job(difficulty, loc, distance, pax, reward, fuel, duration);
             return job;
         }
@@ -207,17 +207,15 @@ namespace Modules.ClientSystem.Managers
         {
             if (client == null || client.TripJob == null) return;
             client.TripJob.SetState(EJobState.Accepted);
-            JobManager.AddAcceptedJob(client.TripJob);
             EventManager.DelegateClientJobAccepted(client, client.TripJob);
         }
 
         public static void RejectClientJob(Client client, long currentUnix, int cooldownSeconds = 60)
         {
             if (client == null || client.TripJob == null) return;
-            // mark job rejected and remove from client
+
             client.TripJob.SetState(EJobState.Rejected);
-            // If the job was added to AcceptedJobs, remove it
-            try { JobManager.AcceptedJobs?.RemoveAll(j => j != null && j.Id == client.TripJob.Id); } catch { }
+
             client.TripJob = null;
             client.CooldownUntilUnix = currentUnix + cooldownSeconds;
             EventManager.DelegateClientJobRejected(client);
@@ -226,14 +224,11 @@ namespace Modules.ClientSystem.Managers
         public static void CancelAcceptedJob(Job job)
         {
             if (job == null) return;
-            // mark cancelled and remove from accepted job list
-            job.SetState(EJobState.Cancelled);
-            try { JobManager.AcceptedJobs?.RemoveAll(j => j != null && j.Id == job.Id); } catch { }
 
-            // Trigger cancellation event while owner still references the job so listeners can find owner by job id
+            job.SetState(EJobState.Cancelled);
+
             EventManager.DelegateJobCancelled(job);
 
-            // remove job reference from its owner client
             var owner = AllClients?.FirstOrDefault(c => c.TripJob != null && c.TripJob.Id == job.Id);
             if (owner != null)
             {

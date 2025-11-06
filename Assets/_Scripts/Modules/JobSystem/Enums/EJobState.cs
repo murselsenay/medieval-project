@@ -5,6 +5,7 @@ namespace Modules.JobSystem.Enums
         Waiting,
         Accepted,
         Rejected,
-        Cancelled
+        Cancelled,
+        Completed
     }
 }

@@ -15,6 +15,7 @@ namespace Utilities
     public class ButtonAnimate : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         [SerializeField] private Button _button;
+        [SerializeField] private TMP_Text _buttonText;
         [Header("Animation")]
         [SerializeField] private float _pressedScale = 0.95f;
         [SerializeField] private float _animDuration = 0.08f;
@@ -44,6 +45,7 @@ namespace Utilities
             _originalScale = transform.localScale;
         }
 
+        public void SetText(string text) => _buttonText.text = text;
         public void OnPointerDown(PointerEventData eventData)
         {
             // Only animate if active (interactable)

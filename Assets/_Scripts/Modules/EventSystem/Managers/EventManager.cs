@@ -18,13 +18,10 @@ namespace Modules.EventSystem.Managers
         // New timer tick event
         public static event Action<long> OnTimerTick;
 
-        // Job assignment events
-        public static event Action<Modules.JobSystem.Models.Job> OnJobAssigned;
-        public static event Action<Modules.JobSystem.Models.Job> OnJobUnassigned;
-
         // Client/Trip job events
         public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobCreated;
         public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobAccepted;
+        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobCancelled;
         public static event Action<Client> OnClientJobRejected;
 
         // Job lifecycle
@@ -89,24 +86,6 @@ namespace Modules.EventSystem.Managers
             catch { }
         }
 
-        public static void DelegateJobAssigned(Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnJobAssigned?.Invoke(job);
-            }
-            catch { }
-        }
-
-        public static void DelegateJobUnassigned(Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnJobUnassigned?.Invoke(job);
-            }
-            catch { }
-        }
-
         public static void DelegateClientJobCreated(Client client, Modules.JobSystem.Models.Job job)
         {
             try
@@ -121,6 +100,15 @@ namespace Modules.EventSystem.Managers
             try
             {
                 OnClientJobAccepted?.Invoke(client, job);
+            }
+            catch { }
+        }
+
+        public static void DelegateClientJobCancelled(Client client, Modules.JobSystem.Models.Job job)
+        {
+            try
+            {
+                OnClientJobCancelled?.Invoke(client, job);
             }
             catch { }
         }

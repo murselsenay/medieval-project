@@ -1,10 +1,7 @@
 fileFormatVersion: 2
-guid: be120bf969ae2c84fa997ecca6dd28e6
+guid: 1880e4e41b1ad46498b92bb0a5afb54b
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: -52179173452712981
-    second: Small Square Button Green_0
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -42,7 +39,7 @@ TextureImporter:
     mipBias: 0
     wrapU: 1
     wrapV: 1
-    wrapW: 1
+    wrapW: 0
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
@@ -52,7 +49,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteBorder: {x: 13, y: 13, z: 13, w: 12}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -97,19 +94,6 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 3
-    buildTarget: Android
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
     buildTarget: iPhone
     maxTextureSize: 2048
     resizeAlgorithm: 0
@@ -135,26 +119,60 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Small Square Button Green_0
+      name: Frame_CardFrame00_Strapped_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 12
+        width: 26
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 13, y: 1, z: 13, w: 12}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a55b4011ba790bf4cb01015eba339d2c
+      internalID: -1469298642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frame_CardFrame00_Strapped_1
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 138
-        height: 149
+        width: 26
+        height: 12
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 25, y: 45, z: 25, w: 25}
+      pivot: {x: 0, y: 0}
+      border: {x: 13, y: 11, z: 13, w: 1}
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: be37da5715f964ff0800000000000000
-      internalID: -52179173452712981
+      spriteID: 2bf987c14a30a0548ace799133d48739
+      internalID: -172089003
       vertices: []
       indices: 
       edges: []
@@ -162,15 +180,16 @@ TextureImporter:
     outline: []
     physicsShape: []
     bones: []
-    spriteID: c4aae5624e9942d4e867ac52942a653d
-    internalID: 0
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      Small Square Button Green_0: -52179173452712981
+      Frame_CardFrame00_Strapped_0: -1469298642
+      Frame_CardFrame00_Strapped_1: -172089003
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
