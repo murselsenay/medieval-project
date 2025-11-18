@@ -2,7 +2,6 @@ using UnityEngine;
 using Modules.Economy.Enums;
 using Modules.PopupSystem.Components;
 using System;
-using Modules.ClientSystem.Models;
 
 namespace Modules.EventSystem.Managers
 {
@@ -17,18 +16,6 @@ namespace Modules.EventSystem.Managers
 
         // New timer tick event
         public static event Action<long> OnTimerTick;
-
-        // Client/Trip job events
-        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobCreated;
-        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobAccepted;
-        public static event Action<Client, Modules.JobSystem.Models.Job> OnClientJobCancelled;
-        public static event Action<Client> OnClientJobRejected;
-
-        // Job lifecycle
-        public static event Action<Modules.JobSystem.Models.Job> OnJobCancelled;
-
-        // UI requests
-        public static event Action<Client> OnShowTaxisRequested;
         #endregion
 
         #region Methods
@@ -85,61 +72,6 @@ namespace Modules.EventSystem.Managers
             }
             catch { }
         }
-
-        public static void DelegateClientJobCreated(Client client, Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnClientJobCreated?.Invoke(client, job);
-            }
-            catch { }
-        }
-
-        public static void DelegateClientJobAccepted(Client client, Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnClientJobAccepted?.Invoke(client, job);
-            }
-            catch { }
-        }
-
-        public static void DelegateClientJobCancelled(Client client, Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnClientJobCancelled?.Invoke(client, job);
-            }
-            catch { }
-        }
-
-        public static void DelegateClientJobRejected(Client client)
-        {
-            try
-            {
-                OnClientJobRejected?.Invoke(client);
-            }
-            catch { }
-        }
-
-        public static void DelegateJobCancelled(Modules.JobSystem.Models.Job job)
-        {
-            try
-            {
-                OnJobCancelled?.Invoke(job);
-            }
-            catch { }
-        }
-
-        public static void DelegateShowTaxisRequested(Client client)
-        {
-            try
-            {
-                OnShowTaxisRequested?.Invoke(client);
-            }
-            catch { }
-        }
-
         #endregion
     }
 }
