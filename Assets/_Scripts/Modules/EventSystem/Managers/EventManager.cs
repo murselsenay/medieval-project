@@ -16,6 +16,10 @@ namespace Modules.EventSystem.Managers
 
         // New timer tick event
         public static event Action<long> OnTimerTick;
+        // Movement input events
+        public static event Action<Vector3, float> OnMoveInput; // direction (world XZ), magnitude [0..1]
+        public static event Action OnMoveStarted;
+        public static event Action OnMoveEnded;
         #endregion
 
         #region Methods
@@ -69,6 +73,33 @@ namespace Modules.EventSystem.Managers
             try
             {
                 OnTimerTick?.Invoke(unixTime);
+            }
+            catch { }
+        }
+
+        public static void DelegateMoveInput(Vector3 direction, float magnitude)
+        {
+            try
+            {
+                OnMoveInput?.Invoke(direction, magnitude);
+            }
+            catch { }
+        }
+
+        public static void DelegateMoveStarted()
+        {
+            try
+            {
+                OnMoveStarted?.Invoke();
+            }
+            catch { }
+        }
+
+        public static void DelegateMoveEnded()
+        {
+            try
+            {
+                OnMoveEnded?.Invoke();
             }
             catch { }
         }

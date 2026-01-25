@@ -37,6 +37,10 @@ MonoBehaviour:
     assemblyNames:
     - Assembly-CSharp
     - AYellowpaper.SerializedCollections
+    - CFXRDemo
+    - CFXRRuntime
+    - Cinemachine
+    - KinoBloom.Runtime
     - NaughtyAttributes.Core
     - NaughtyAttributes.Test
     - UniTask
