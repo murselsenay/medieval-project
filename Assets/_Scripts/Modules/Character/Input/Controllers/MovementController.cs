@@ -1,190 +1,494 @@
-using Character.Input.Interfaces;
 using Modules.Logger;
-using Modules.EventSystem.Managers;
 using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.EventSystems;
+using System.Collections;
 
 namespace Modules.Character.Input.Controllers
 {
-    [RequireComponent(typeof(CharacterController))]
+    [RequireComponent(typeof(NavMeshAgent))]
     public class MovementController : MonoBehaviour
     {
-        [BHeader("References")]
-        [SerializeField] private CharacterController _controller;
+        [Header("References")]
+        [SerializeField] private NavMeshAgent _agent;
 
-        [BHeader("Movement")]
-        [SerializeField] private float _speed = 5f;
-        [SerializeField] private float _turnSmoothTime = 0.1f;
+        [Header("Movement")]
+        [SerializeField] private float _rotationSmoothTime = 0.12f;
+        [SerializeField] private float _stopThreshold = 0.1f;
+        [SerializeField] private LayerMask _clickableLayers = ~0;
+        [SerializeField] private float _walkSpeed = 0.8f;
+        [SerializeField] private float _runSpeed = 3.5f;
+        [SerializeField] private float _holdToRunThreshold = 0.25f;
 
-        [BHeader("Gravity")]
-        [SerializeField] private float _gravityValue = -9.81f;
-        [SerializeField] private float _groundedY = -0.5f;
-        [SerializeField] private bool _scaleSpeedByInput = true;
-        [SerializeField] private float _groundCheckDistance = 0.2f;
-        [SerializeField] private LayerMask _groundLayers = ~0;
+        private Coroutine _holdCoroutine;
 
-        [BHeader("Animations")]
+        [Header("Animation")]
         [SerializeField] private Animator _animator;
+        [SerializeField] private string _animSpeedParam = "Speed";
 
-        private float _turnSmoothVelocity;
-        private Vector3 _playerVelocity;
-        private IInputProvider _fallbackInputProvider;
+        private float _rotationVelocity;
+        private Vector3 _currentDestination;
+        private bool _hasDestination;
+        
+        [Header("Path Visual")]
+        [SerializeField] private bool _showPath = true;
+        [SerializeField] private LineRenderer _pathLine;
+        [SerializeField] private Color _pathColor = Color.cyan;
+        [SerializeField] private float _pathWidth = 0.12f;
+        [SerializeField] private bool _overrideLineWidth = false;
+        [SerializeField] private float _pathYOffset = 0.05f;
+        [SerializeField] private bool _useDashTexture = false;
 
-        // event-driven input state
-        private Vector3 _inputDirection = Vector3.zero;
-        private float _inputMagnitude = 0f;
-        private bool _moveActive = false;
+        private Texture2D _dashTexture;
+        [SerializeField] private float _dashTextureScale = 1f;
+        [SerializeField] private float _pathFollowInterval = 0.12f;
+        [SerializeField] private float _pathTrimThreshold = 0.5f;
+        
+        [Header("Target Visual")]
+        [SerializeField] private GameObject _targetMarker;
+        [SerializeField] private float _targetYOffset = 0.05f;
+        [SerializeField] private float _targetPulseMin = 0.8f;
+        [SerializeField] private float _targetPulseMax = 1.15f;
+        [SerializeField] private float _targetPulseSpeed = 3f;
+        [SerializeField] private float _targetPulseRunMultiplier = 1.6f;
+        [SerializeField] private float _targetPulseWalkMultiplier = 1f;
+
+        private GameObject _activeTarget;
+        private Coroutine _targetPulseCoroutine;
+        private bool _isRunning = false;
+
+        private Vector3[] _pathPositions = new Vector3[0];
+        private Coroutine _pathFollowCoroutine;
 
         private void Awake()
         {
-            if (_controller == null)
-                _controller = GetComponent<CharacterController>();
+            if (_agent == null)
+                _agent = GetComponent<NavMeshAgent>();
 
-            if (_controller == null)
+            if (_agent == null)
             {
-                DebugLogger.LogError($"CharacterController not found on '{name}'. MovementController will be inactive.");
+                DebugLogger.LogError($"NavMeshAgent not found on '{name}'. MovementController will be disabled.");
+                enabled = false;
+                return;
             }
-            MonoBehaviour[] mbs = GetComponents<MonoBehaviour>();
-            foreach (var mb in mbs)
-            {
-                if (mb is IInputProvider provider)
-                {
-                    _fallbackInputProvider = provider;
-                    break;
-                }
-            }
-
         }
-        private void OnEnable()
-        {
-            EventManager.OnMoveInput += HandleMoveInput;
-            EventManager.OnMoveStarted += HandleMoveStarted;
-            EventManager.OnMoveEnded += HandleMoveEnded;
-        }
-
-        private void OnDisable()
-        {
-            EventManager.OnMoveInput -= HandleMoveInput;
-            EventManager.OnMoveStarted -= HandleMoveStarted;
-            EventManager.OnMoveEnded -= HandleMoveEnded;
-        }
-
-        private void HandleMoveInput(Vector3 direction, float magnitude)
-        {
-            _inputDirection = new Vector3(direction.x, 0f, direction.z);
-            _inputMagnitude = Mathf.Clamp01(magnitude);
-        }
-
-        private void HandleMoveStarted()
-        {
-            _moveActive = true;
-        }
-
-        private void HandleMoveEnded()
-        {
-            _moveActive = false;
-            _inputMagnitude = 0f;
-            _inputDirection = Vector3.zero;
-        }
-
-        // Auto-fit coroutine removed.
-
-        private void OnValidate()
-        {
-            // Clamp values edited in inspector to safe ranges.
-            _groundedY = -Mathf.Abs(_groundedY == 0f ? -0.5f : _groundedY);
-            if (_gravityValue > 0f) _gravityValue = -Mathf.Abs(_gravityValue == 0f ? 9.81f : _gravityValue);
-            if (_speed < 0f) _speed = 0f;
-            if (_turnSmoothTime < 0f) _turnSmoothTime = 0f;
-        }
-
-        // Automatic fitting removed. Configure CharacterController manually in the Inspector to match the visual mesh.
 
         private void Update()
         {
-            // core movement update
+            HandleClickInput();
+            UpdateRotation();
+            UpdateAnimator();
+        }
 
-            // Prefer event-driven input; fall back to polling provider if any
-            Vector3 rawInput = Vector3.zero;
-            if (_inputDirection != Vector3.zero && _inputMagnitude > 0f)
-            {
-                rawInput = _inputDirection * _inputMagnitude;
-            }
-            else if (_fallbackInputProvider != null)
-            {
-                rawInput = _fallbackInputProvider.GetInputDirection();
-            }
+        private void HandleClickInput()
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return;
 
-            // Movement in world X/Z plane for a top-down camera
-            Vector3 inputDir = new Vector3(rawInput.x, 0f, rawInput.z);
-            float inputMag = Mathf.Clamp01(inputDir.magnitude);
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                return;
 
-            // Rotation: only when there is significant input
-            if (inputMag >= 0.1f)
+            // On mouse down: set destination and begin hold-to-run detection
+            if (UnityEngine.Input.GetMouseButtonDown(0))
             {
-                float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg;
-                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, _turnSmoothTime);
-                transform.rotation = Quaternion.Euler(0f, angle, 0f);
-            }
-
-            // Horizontal movement scaled by input magnitude if requested
-            Vector3 horizontalVelocity = Vector3.zero;
-            if (inputMag >= 0.01f)
-            {
-                if (_scaleSpeedByInput)
-                    horizontalVelocity = inputDir.normalized * _speed * inputMag;
-                else
-                    horizontalVelocity = inputDir.normalized * _speed;
-            }
-
-            bool isGrounded = _controller.isGrounded;
-            if (_controller != null)
-            {
-                Vector3 controllerBottom = transform.TransformPoint(_controller.center - Vector3.up * (_controller.height * 0.5f - _controller.skinWidth));
-                Ray ray = new Ray(controllerBottom + Vector3.up * 0.05f, Vector3.down);
-                if (Physics.Raycast(ray, out RaycastHit hit, _groundCheckDistance + 0.05f, _groundLayers, QueryTriggerInteraction.Ignore))
+                Ray ray = cam.ScreenPointToRay(UnityEngine.Input.mousePosition);
+                if (Physics.Raycast(ray, out RaycastHit hit, 100f, _clickableLayers, QueryTriggerInteraction.Ignore))
                 {
-                    isGrounded = true;
+                        if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 1.0f, NavMesh.AllAreas))
+                        {
+                            // Click registered — compute destination
+                            _currentDestination = navHit.position;
+
+                            // calculate path immediately for an instant visual (agent.path may not be ready yet)
+                            if (_showPath)
+                            {
+                                UpdatePathImmediate(_currentDestination);
+                            }
+
+                            _agent.SetDestination(_currentDestination);
+                            _hasDestination = true;
+
+                            // start with walk speed
+                            SetAgentSpeed(_walkSpeed);
+
+                            // start hold detection
+                            if (_holdCoroutine != null) StopCoroutine(_holdCoroutine);
+                            _holdCoroutine = StartCoroutine(HoldToRunCoroutine());
+
+                            // update path visual once now and start follow-updater to shorten it as agent moves
+                            if (_showPath)
+                            {
+                                UpdatePathImmediate(_currentDestination);
+                                if (_pathFollowCoroutine != null) StopCoroutine(_pathFollowCoroutine);
+                                _pathFollowCoroutine = StartCoroutine(PathFollowCoroutine());
+                            }
+
+                            // spawn or move the target visual to clicked spot
+                            if (_targetMarker != null)
+                            {
+                                SpawnOrMoveTarget(_currentDestination);
+                            }
+                        }
                 }
             }
 
-            // Gravity handling: when grounded and moving downward, set a small negative velocity so the controller stays snapped to ground.
-            if (isGrounded && _playerVelocity.y < 0f)
+            // On mouse up: stop hold detection and ensure walk speed
+            if (UnityEngine.Input.GetMouseButtonUp(0))
             {
-                _playerVelocity.y = _groundedY;
+                if (_holdCoroutine != null)
+                {
+                    StopCoroutine(_holdCoroutine);
+                    _holdCoroutine = null;
+                }
+                SetAgentSpeed(_walkSpeed);
+                _isRunning = false;
             }
+        }
 
-            _playerVelocity.y += _gravityValue * Time.deltaTime;
+        private System.Collections.IEnumerator HoldToRunCoroutine()
+        {
+            float t = 0f;
+            while (UnityEngine.Input.GetMouseButton(0))
+            {
+                t += Time.deltaTime;
+                if (t >= _holdToRunThreshold)
+                {
+                    SetAgentSpeed(_runSpeed);
+                    _isRunning = true;
+                    yield break;
+                }
+                yield return null;
+            }
+            // released before threshold
+            SetAgentSpeed(_walkSpeed);
+            _isRunning = false;
+        }
 
-            // Combine horizontal and vertical movement into a single move so collisions/grounding are consistent
-            Vector3 move = horizontalVelocity * Time.deltaTime + _playerVelocity * Time.deltaTime;
-            _controller.Move(move);
+        private void SetAgentSpeed(float speed)
+        {
+            if (_agent != null)
+                _agent.speed = speed;
+            // keep running state in sync with actual movement speed
+            _isRunning = speed > (_walkSpeed + 0.01f);
+        }
 
-            _animator.SetFloat("Speed", inputMag, 0.1f, Time.deltaTime);
+        private void UpdateRotation()
+        {
+            Vector3 velocity = _agent.velocity;
+            velocity.y = 0f;
 
-            // end of Update
+            if (velocity.sqrMagnitude > 0.0001f)
+            {
+                float targetAngle = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
+                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _rotationVelocity, _rotationSmoothTime);
+                transform.rotation = Quaternion.Euler(0f, angle, 0f);
+            }
+            else if (_hasDestination && !_agent.pathPending && _agent.remainingDistance <= _stopThreshold)
+            {
+                _hasDestination = false;
+            }
+        }
+
+        private void UpdateAnimator()
+        {
+            if (_animator == null) return;
+            float speed = _agent.velocity.magnitude;
+            _animator.SetFloat(_animSpeedParam, speed);
         }
 
         private void OnDrawGizmosSelected()
         {
-            // Draw CharacterController capsule for debugging offset issues
-            if (_controller != null)
+            if (_agent != null)
             {
-                Gizmos.color = Color.yellow;
-                Vector3 centerWorld = transform.TransformPoint(_controller.center);
-                float halfHeight = Mathf.Max(0f, (_controller.height * 0.5f) - _controller.radius);
-                Vector3 top = centerWorld + Vector3.up * halfHeight;
-                Vector3 bottom = centerWorld - Vector3.up * halfHeight;
-
-                Gizmos.DrawWireSphere(top, _controller.radius);
-                Gizmos.DrawWireSphere(bottom, _controller.radius);
-                Gizmos.DrawLine(top + transform.right * _controller.radius, bottom + transform.right * _controller.radius);
-                Gizmos.DrawLine(top - transform.right * _controller.radius, bottom - transform.right * _controller.radius);
-                Gizmos.DrawLine(top + transform.forward * _controller.radius, bottom + transform.forward * _controller.radius);
-                Gizmos.DrawLine(top - transform.forward * _controller.radius, bottom - transform.forward * _controller.radius);
+                Gizmos.color = Color.green;
+                Gizmos.DrawWireSphere(_agent.transform.position, 0.1f);
+                if (_hasDestination)
+                {
+                    Gizmos.color = Color.blue;
+                    Gizmos.DrawWireSphere(_currentDestination, 0.15f);
+                }
             }
         }
 
-        // Diagnostics and auto-snap helpers removed - keep MovementController minimal.
+        // Previous continuous update coroutine removed for performance.
+        // We now update the path only when a new destination is set (UpdatePathImmediate).
+
+        private void DrawPath(Vector3[] corners)
+        {
+            if (!_showPath) return;
+
+            if (corners == null || corners.Length < 2)
+            {
+                ClearPathVisual();
+                return;
+            }
+
+            if (_pathLine == null) return;
+
+            if (_pathPositions == null || _pathPositions.Length != corners.Length)
+                _pathPositions = new Vector3[corners.Length];
+
+            // Ensure path starts from the agent's current position to avoid starting at previous endpoint
+            Vector3 agentPos = _agent != null ? _agent.transform.position : Vector3.zero;
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Vector3 p = corners[i];
+                if (i == 0)
+                {
+                    p = agentPos;
+                }
+                p.y += _pathYOffset;
+                _pathPositions[i] = p;
+            }
+
+            if (_pathLine == null) return;
+            _pathLine.positionCount = _pathPositions.Length;
+            _pathLine.SetPositions(_pathPositions);
+            if (_overrideLineWidth)
+            {
+                _pathLine.startWidth = _pathWidth;
+                _pathLine.endWidth = _pathWidth;
+            }
+            _pathLine.startColor = _pathColor;
+            _pathLine.endColor = _pathColor;
+            if (_useDashTexture && _dashTexture != null)
+            {
+                var mat = _pathLine.sharedMaterial;
+                if (mat == null)
+                {
+                    mat = new Material(Shader.Find("Unlit/Transparent"));
+                    _pathLine.sharedMaterial = mat;
+                }
+                mat.mainTexture = _dashTexture;
+                _pathLine.textureMode = LineTextureMode.Tile;
+                // scale texture tiling so dash length roughly equals _dashTextureScale units
+                mat.mainTextureScale = new Vector2(_dashTextureScale, 1f);
+            }
+            _pathLine.enabled = true;
+        }
+
+        private void UpdatePathImmediate(Vector3 destination)
+        {
+            NavMeshPath calcPath = new NavMeshPath();
+            bool ok = NavMesh.CalculatePath(_agent.transform.position, destination, NavMesh.AllAreas, calcPath);
+            if (ok && calcPath.corners != null && calcPath.corners.Length >= 2)
+            {
+                float total = CalculatePathLength(calcPath.corners);
+                SetupPathLineAppearance(total);
+                DrawPath(calcPath.corners);
+            }
+            else
+            {
+                // fallback to simple two-point line
+                if (_pathLine == null) return;
+                _pathPositions = new Vector3[2];
+                Vector3 a = _agent.transform.position; a.y += _pathYOffset;
+                Vector3 b = destination; b.y += _pathYOffset;
+                _pathPositions[0] = a; _pathPositions[1] = b;
+                float total = Vector3.Distance(a, b);
+                SetupPathLineAppearance(total);
+                DrawPath(_pathPositions);
+            }
+        }
+
+        private void SetupPathLineAppearance(float pathLength = 0f)
+        {
+            if (!_showPath || _pathLine == null) return;
+
+            // ensure material exists
+            var mat = _pathLine.sharedMaterial;
+            if (mat == null)
+            {
+                Shader s = Shader.Find("Unlit/Transparent") ?? Shader.Find("Sprites/Default");
+                mat = new Material(s);
+                _pathLine.sharedMaterial = mat;
+            }
+
+            // color and width — set both material and LineRenderer gradient to ensure visibility across shaders
+            _pathLine.startWidth = _pathWidth;
+            _pathLine.endWidth = _pathWidth;
+            // apply color to LineRenderer gradient
+            var g = new Gradient();
+            g.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(_pathColor, 0f), new GradientColorKey(_pathColor, 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(_pathColor.a, 0f), new GradientAlphaKey(_pathColor.a, 1f) }
+            );
+            _pathLine.colorGradient = g;
+            // also set material color properties commonly used by shaders
+            mat.color = _pathColor;
+            mat.SetColor("_Color", _pathColor);
+            mat.SetColor("_BaseColor", _pathColor);
+            mat.SetColor("_TintColor", _pathColor);
+            _pathLine.useWorldSpace = true;
+            _pathLine.alignment = LineAlignment.View;
+            _pathLine.loop = false;
+
+            // dashed texture handling
+            _pathLine.useWorldSpace = true;
+            _pathLine.alignment = LineAlignment.View;
+            if (_useDashTexture)
+            {
+                if (_dashTexture == null)
+                {
+                    // create a small repeatable dash texture if none provided
+                    _dashTexture = CreateDashTexture(64, 4, 8, 8, Color.white);
+                }
+
+                if (_dashTexture != null)
+                {
+                    _dashTexture.wrapMode = TextureWrapMode.Repeat;
+                    _dashTexture.filterMode = FilterMode.Bilinear;
+                    mat.mainTexture = _dashTexture;
+                    _pathLine.textureMode = LineTextureMode.Tile;
+                    // texture scale controls how many repeats across the line length; user can tweak
+                    // If pathLength provided, set tiling so that each dash texture covers approximately _dashTextureScale world units
+                    if (pathLength > 0f && _dashTextureScale > 0f)
+                    {
+                        float repeats = Mathf.Max(1f, pathLength / _dashTextureScale);
+                        mat.SetTextureScale("_MainTex", new Vector2(repeats, 1f));
+                    }
+                    else
+                    {
+                        mat.SetTextureScale("_MainTex", new Vector2(_dashTextureScale, 1f));
+                    }
+                }
+            }
+            else
+            {
+                _pathLine.textureMode = LineTextureMode.Stretch;
+            }
+
+            // rendering settings
+            var rendererComp = _pathLine.GetComponent<Renderer>();
+            if (rendererComp != null)
+            {
+                rendererComp.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rendererComp.receiveShadows = false;
+            }
+
+            // ensure GameObject active
+            if (!_pathLine.gameObject.activeInHierarchy) _pathLine.gameObject.SetActive(true);
+            _pathLine.enabled = true;
+        }
+
+        private Texture2D CreateDashTexture(int totalWidth, int height, int dashPx, int gapPx, Color color)
+        {
+            var tex = new Texture2D(totalWidth, height, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Repeat;
+            tex.filterMode = FilterMode.Bilinear;
+            Color transparent = new Color(0, 0, 0, 0);
+            for (int x = 0; x < totalWidth; x++)
+            {
+                bool dash = (x % (dashPx + gapPx)) < dashPx;
+                Color c = dash ? color : transparent;
+                for (int y = 0; y < height; y++) tex.SetPixel(x, y, c);
+            }
+            tex.Apply();
+            return tex;
+        }
+
+        private void ClearPathVisual()
+        {
+            if (_pathLine != null)
+            {
+                _pathLine.positionCount = 0;
+                _pathLine.enabled = false;
+            }
+            _pathPositions = new Vector3[0];
+            if (_pathFollowCoroutine != null)
+            {
+                StopCoroutine(_pathFollowCoroutine);
+                _pathFollowCoroutine = null;
+            }
+
+            // destroy target if any
+            if (_activeTarget != null)
+            {
+                if (_targetPulseCoroutine != null) StopCoroutine(_targetPulseCoroutine);
+                _activeTarget.SetActive(false);
+                _activeTarget = null;
+            }
+            _isRunning = false;
+        }
+
+        private void SpawnOrMoveTarget(Vector3 worldPos)
+        {
+            if (_targetMarker == null)
+            {
+                DebugLogger.LogWarning("MovementController: No _targetMarker assigned in inspector. Assign a scene marker to visualize clicks.");
+                return;
+            }
+
+            _activeTarget = _targetMarker;
+            _activeTarget.transform.position = worldPos + Vector3.up * _targetYOffset;
+            _activeTarget.SetActive(true);
+
+            if (_targetPulseCoroutine != null) StopCoroutine(_targetPulseCoroutine);
+            _targetPulseCoroutine = StartCoroutine(TargetPulseCoroutine(_activeTarget.transform));
+        }
+
+        private System.Collections.IEnumerator TargetPulseCoroutine(Transform t)
+        {
+            float ttime = 0f;
+            while (t != null)
+            {
+                float speedMul = _isRunning ? _targetPulseRunMultiplier : _targetPulseWalkMultiplier;
+                ttime += Time.deltaTime * _targetPulseSpeed * speedMul;
+                float s = Mathf.Lerp(_targetPulseMin, _targetPulseMax, (Mathf.Sin(ttime) + 1f) * 0.5f);
+                t.localScale = Vector3.one * s;
+                yield return null;
+            }
+        }
+
+        private System.Collections.IEnumerator PathFollowCoroutine()
+        {
+            // Continuously recalculate a lightweight path at intervals and redraw the visual from the agent position.
+            while (_pathLine != null && _agent != null)
+            {
+                // compute path from current agent position to current destination
+                NavMeshPath calc = new NavMeshPath();
+                bool ok = NavMesh.CalculatePath(_agent.transform.position, _currentDestination, NavMesh.AllAreas, calc);
+                if (ok && calc.corners != null && calc.corners.Length >= 2)
+                {
+                    int len = calc.corners.Length;
+                    if (_pathPositions == null || _pathPositions.Length != len) _pathPositions = new Vector3[len];
+                    Vector3 agentPos = _agent.transform.position;
+                    for (int i = 0; i < len; i++)
+                    {
+                        Vector3 p = calc.corners[i];
+                        if (i == 0) p = agentPos; // start from current agent pos for visual consistency
+                        p.y += _pathYOffset;
+                        _pathPositions[i] = p;
+                    }
+
+                    _pathLine.positionCount = _pathPositions.Length;
+                    _pathLine.SetPositions(_pathPositions);
+                    _pathLine.enabled = true;
+                }
+                else
+                {
+                    // no valid path — clear and wait
+                    ClearPathVisual();
+                }
+
+                if (!_agent.pathPending && _agent.remainingDistance <= _stopThreshold)
+                {
+                    break;
+                }
+
+                yield return new WaitForSeconds(_pathFollowInterval);
+            }
+
+            yield return new WaitForSeconds(0.25f);
+            ClearPathVisual();
+        }
+
+        private float CalculatePathLength(Vector3[] corners)
+        {
+            if (corners == null || corners.Length < 2) return 0f;
+            float acc = 0f;
+            for (int i = 0; i < corners.Length - 1; i++) acc += Vector3.Distance(corners[i], corners[i + 1]);
+            return acc;
+        }
     }
 }
-

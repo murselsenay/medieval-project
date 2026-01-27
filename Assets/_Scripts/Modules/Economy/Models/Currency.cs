@@ -49,10 +49,10 @@ namespace Modules.Economy.Models
         public Gold(int initial) : base(initial, ECurrencyType.Gold) { }
 
         public override void Add() => Add(1);
-        public void Add(int amount) => base.Add(amount);
+        public override void Add(int amount) => base.Add(amount);
 
         public override void Consume() => Consume(1);
-        public void Consume(int amount) => base.Consume(amount);
+        public override void Consume(int amount) => base.Consume(amount);
 
         public bool TryConsume(int amount)
         {
@@ -71,10 +71,10 @@ namespace Modules.Economy.Models
         public Gem(int initial) : base(initial, ECurrencyType.Gem) { }
 
         public override void Add() => Add(1);
-        public void Add(int amount) => base.Add(amount);
+        public override void Add(int amount) => base.Add(amount);
 
         public override void Consume() => Consume(1);
-        public void Consume(int amount) => base.Consume(amount);
+        public override void Consume(int amount) => base.Consume(amount);
 
         public bool TryConsume(int amount)
         {

@@ -154,10 +154,5 @@ namespace Modules.PopupSystem.Components
                 _isClosing = false;
             });
         }
-
-        private void OnDestroy()
-        {
-            _sequence?.Kill();
-        }
     }
 }

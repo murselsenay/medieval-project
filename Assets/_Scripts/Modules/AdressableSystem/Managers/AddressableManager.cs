@@ -12,7 +12,7 @@ namespace Modules.AdressableSystem
     {
         public static async UniTask Initialize()
         {
-
+                
         }
 
         public static async UniTask<T> LoadAsync<T>(string address) where T : Object
