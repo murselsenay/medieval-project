@@ -15,31 +15,29 @@ namespace Modules.Enemy.Controllers
     public class EnemyVision : MonoBehaviour
     {
         [Header("FOV")]
-        [Tooltip("Half-angle of the view cone in degrees (e.g. 45 = 90deg cone)")]
         [SerializeField] private float _viewAngle = 45f;
         [Tooltip("Maximum view distance")]
         [SerializeField] private float _viewDistance = 10f;
-        [Tooltip("Optional transform to use as origin and forward direction for the FOV. If null, this GameObject's transform is used.")]
         [SerializeField] private Transform _viewOrigin;
         [Header("Debug Draw")]
         [SerializeField] private bool _showFovMesh = true;
         // color is taken from assigned materials; do not expose here
         [SerializeField, Range(8, 128)] private int _fovSegments = 64;
-        [Tooltip("Optional material to render the FOV mesh. Assign in inspector. If null, a fallback material will be created.")]
         [SerializeField] private Material _fovMaterial;
-        [Tooltip("Material used for the fill overlay (animated). Assign in inspector or leave null for fallback.)")]
         [SerializeField] private Material _fovFillMaterial;
         [SerializeField] private float _fillDuration = 1.5f;
-        [Tooltip("Inspector toggle for testing: when true, starts fill animation")]
         [SerializeField] private bool _debugStartFill = false;
 
         [Header("Detection")]
-        [Tooltip("Which layers contain potential targets (e.g. Player)")]
         [SerializeField] private LayerMask _targetMask = ~0;
-        [Tooltip("Which layers block vision (walls, obstacles)")]
         [SerializeField] private LayerMask _obstacleMask = 0;
-        [Tooltip("How often (seconds) to run the detection scan")]
         [SerializeField] private float _scanInterval = 0.15f;
+        [Header("Target Filter")]
+        [SerializeField] private bool _useTagFilter = true;
+        [SerializeField] private string _targetTag = "Player";
+        [Header("Instant Fill")]
+        [Tooltip("If target is this close (world units) the fill completes instantly and triggers spotted.")]
+        [SerializeField] private float _instantFillDistance = 1.5f;
 
         // last seen target (null if none)
         public Transform CurrentTarget { get; private set; }
@@ -47,6 +45,10 @@ namespace Modules.Enemy.Controllers
         // events
         public event Action<Transform> OnTargetFound;
         public event Action OnTargetLost;
+        // raised when fill animation completes (reaches 1.0)
+        public event Action OnFillComplete;
+        // raised when fill is fully cleared (reaches 0.0)
+        public event Action OnFillCleared;
 
         private Coroutine _scanCoroutine;
 
@@ -77,10 +79,10 @@ namespace Modules.Enemy.Controllers
             if (_scanCoroutine != null) return;
             _scanCoroutine = StartCoroutine(ScanRoutine());
             if (_showFovMesh) CreateFovMesh();
-            // debug toggle handled in Update() to animate in/out
+            // subscribe handlers
+            OnTargetFound += HandleTargetFound;
+            OnTargetLost += HandleTargetLost;
         }
-
-        // colors are taken from assigned materials; no inspector color fields
 
         public void StopScanning()
         {
@@ -96,11 +98,14 @@ namespace Modules.Enemy.Controllers
             }
             if (_fovMeshObj != null) Destroy(_fovMeshObj);
             if (_fovFillObj != null) Destroy(_fovFillObj);
+
+            // unsubscribe handlers
+            OnTargetFound -= HandleTargetFound;
+            OnTargetLost -= HandleTargetLost;
         }
 
         private void Update()
         {
-            // inspector toggle handling for testing: start/stop fill when changed
             if (_debugStartFill != _debugFillRequestedPrev)
             {
                 _debugFillRequestedPrev = _debugStartFill;
@@ -109,6 +114,26 @@ namespace Modules.Enemy.Controllers
                 else
                     AnimateFillTo(0f);
             }
+        }
+        
+        private void HandleTargetFound(Transform t)
+        {
+            if (_useTagFilter && t != null && !t.CompareTag(_targetTag)) return;
+            // if target is very close, instantly fill and trigger spotted
+            Transform origin = _viewOrigin != null ? _viewOrigin : transform;
+            if (t != null && Vector3.Distance(origin.position, t.position) <= _instantFillDistance)
+            {
+                InstantFill();
+                return;
+            }
+            // otherwise start animated fill when player enters
+            AnimateFillTo(1f);
+        }
+        
+        private void HandleTargetLost()
+        {
+            // reverse fill when player leaves
+            AnimateFillTo(0f);
         }
 
         private IEnumerator ScanRoutine()
@@ -126,12 +151,8 @@ namespace Modules.Enemy.Controllers
         {
             if (_fovFillObj == null) CreateFovMesh();
             if (_isFilling) return;
-            // ensure fill material visible (we drive geometry, not alpha)
             if (_fovFillRenderer != null && _fovFillRenderer.material != null)
             {
-                // material color should come from the assigned material; ensure it's configured
-                ConfigureMaterialForTransparency(_fovFillRenderer.material);
-                // if shader supports _Fill, set initial to 0
                 if (_fovFillRenderer.material.HasProperty("_Fill"))
                     _fovFillRenderer.material.SetFloat("_Fill", 0f);
                 if (_fovFillRenderer.material.HasProperty("_Radius"))
@@ -141,6 +162,22 @@ namespace Modules.Enemy.Controllers
             }
             _fovFillObj.SetActive(true);
             AnimateFillTo(1f);
+        }
+
+        private void InstantFill()
+        {
+            if (_fovFillObj == null) CreateFovMesh();
+            _fovFillObj.SetActive(true);
+            _currentFill = 1f;
+            if (_fovFillRenderer != null && _fovFillRenderer.material != null && _fovFillRenderer.material.HasProperty("_Fill"))
+            {
+                _fovFillRenderer.material.SetFloat("_Fill", 1f);
+            }
+            else
+            {
+                UpdateFillMesh(1f);
+            }
+            OnFillComplete?.Invoke();
         }
 
         public void StopFillAnimation()
@@ -180,6 +217,10 @@ namespace Modules.Enemy.Controllers
             if (Mathf.Approximately(_currentFill, 0f) && _fovFillObj != null)
                 _fovFillObj.SetActive(false);
 
+            // notify completion/cleared
+            if (Mathf.Approximately(_currentFill, 1f)) OnFillComplete?.Invoke();
+            if (Mathf.Approximately(_currentFill, 0f)) OnFillCleared?.Invoke();
+
             _isFilling = false;
             _animateFillCoroutine = null;
         }
@@ -188,7 +229,7 @@ namespace Modules.Enemy.Controllers
         {
             target = Mathf.Clamp01(target);
             if (_animateFillCoroutine != null) StopCoroutine(_animateFillCoroutine);
-            // ensure mesh exists
+
             if (_fovFillObj == null) CreateFovMesh();
             if (_fovFillObj != null) _fovFillObj.SetActive(true);
             _animateFillCoroutine = StartCoroutine(AnimateFillCoroutineImpl(target));
@@ -238,45 +279,53 @@ namespace Modules.Enemy.Controllers
             if (_fovFillObj != null) _fovFillObj.SetActive(true);
         }
 
-        // removed unused helper methods to keep script minimal
-
         private void ScanOnce()
         {
-            // find colliders in sphere
+            // Improved detection: use collider.ClosestPoint, horizontal angle, and obstacle-only raycast.
             Transform origin = _viewOrigin != null ? _viewOrigin : transform;
             Collider[] hits = Physics.OverlapSphere(origin.position, _viewDistance, _targetMask, QueryTriggerInteraction.Ignore);
 
             Transform found = null;
             float bestDist = float.MaxValue;
 
+            Vector3 forwardFlat = Vector3.ProjectOnPlane(origin.forward, Vector3.up);
+            if (forwardFlat.sqrMagnitude < 0.0001f) forwardFlat = origin.forward;
+
             foreach (var c in hits)
             {
                 if (c == null) continue;
-                Transform t = c.transform;
-                Vector3 dir = (t.position - origin.position);
+
+                // use closest point on collider to avoid center-offset issues
+                Vector3 closest = c.ClosestPoint(origin.position);
+                Vector3 dir = closest - origin.position;
                 float dist = dir.magnitude;
                 if (dist <= 0.001f) continue;
 
-                // angle check
-                float angle = Vector3.Angle(origin.forward, dir.normalized);
-                if (angle > _viewAngle) continue;
-
-                // line of sight
-                if (Physics.Raycast(origin.position, dir.normalized, out RaycastHit hit, _viewDistance, _obstacleMask | _targetMask))
+                // horizontal angle check to avoid vertical/tilt issues
+                Vector3 dirFlat = Vector3.ProjectOnPlane(dir, Vector3.up);
+                if (dirFlat.sqrMagnitude < 0.0001f)
                 {
-                    // if raycast hits an obstacle before the target, ignore
-                    if (((1 << hit.collider.gameObject.layer) & _targetMask) == 0)
-                    {
-                        // hit something that's not the target layer -> blocked
-                        continue;
-                    }
+                    // target essentially above/below origin; still allow if within small angle
+                    dirFlat = dir.normalized;
                 }
 
-                // choose nearest valid target
+                float angle = Vector3.Angle(forwardFlat.normalized, dirFlat.normalized);
+                if (angle > _viewAngle) continue;
+
+                // raycast only against obstacle mask to determine blocking
+                bool blocked = false;
+                RaycastHit hitInfo;
+                if (Physics.Raycast(origin.position, dir.normalized, out hitInfo, dist - 0.01f, _obstacleMask))
+                {
+                    blocked = true;
+                }
+                if (blocked) continue;
+
+                // optional tag filter handled by event handler; still choose nearest
                 if (dist < bestDist)
                 {
                     bestDist = dist;
-                    found = t;
+                    found = c.transform;
                 }
             }
 
@@ -320,62 +369,58 @@ namespace Modules.Enemy.Controllers
             _fovMeshObj.transform.SetParent(origin, false);
             _fovMeshFilter = _fovMeshObj.AddComponent<MeshFilter>();
             _fovMeshRenderer = _fovMeshObj.AddComponent<MeshRenderer>();
-            if (_fovMaterial != null)
-            {
-                _fovMeshRenderer.sharedMaterial = _fovMaterial;
-            }
-            else
-            {
-                Debug.LogWarning($"EnemyVision on '{name}': no FOV material assigned, creating fallback material.");
-                var mat = new Material(Shader.Find("Unlit/Color"));
-                if (mat == null) mat = new Material(Shader.Find("Sprites/Default"));
-                _fovMeshRenderer.sharedMaterial = mat;
-            }
+            _fovMeshRenderer.sharedMaterial = _fovMaterial;
+
             UpdateFovMesh();
-            // create fill overlay object (same mesh) for animated filling
+
             _fovFillObj = new GameObject($"{name}_FOV_Fill");
             _fovFillObj.transform.SetParent(origin, false);
             _fovFillFilter = _fovFillObj.AddComponent<MeshFilter>();
             _fovFillRenderer = _fovFillObj.AddComponent<MeshRenderer>();
-            // assign an instance material so we can animate color without modifying shared asset
+
             // ensure fill starts hidden; render on top of base FOV to avoid z-fighting
             _fovFillObj.transform.localPosition = new Vector3(0, 0.01f, 0.01f);
-            if (_fovMeshRenderer != null && _fovMeshRenderer.sharedMaterial != null)
-                _fovFillRenderer.material.renderQueue = _fovMeshRenderer.sharedMaterial.renderQueue + 1;
+
+            // create a safe instance material for the fill that is unlit (prevents lighting-based fading when rotating)
             if (_fovFillMaterial != null)
             {
-                _fovFillRenderer.material = new Material(_fovFillMaterial);
-                ConfigureMaterialForTransparency(_fovFillRenderer.material);
+                // prefer an unlit instance so lighting/rotation doesn't change appearance
+                string sname = _fovFillMaterial.shader != null ? _fovFillMaterial.shader.name : string.Empty;
+                if (sname.IndexOf("Unlit", StringComparison.OrdinalIgnoreCase) >= 0 || sname.IndexOf("FOVFill", StringComparison.OrdinalIgnoreCase) >= 0 || sname.IndexOf("Sprite", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    _fovFillRenderer.material = new Material(_fovFillMaterial);
+                }
+                else
+                {
+                    // copy color if available, but use Unlit shader to avoid shading changes while rotating
+                    Color srcCol = Color.white;
+                    try { if (_fovFillMaterial.HasProperty("_Color")) srcCol = _fovFillMaterial.GetColor("_Color"); } catch { }
+                    var safe = new Material(Shader.Find("Unlit/Color")) ?? new Material(Shader.Find("Sprites/Default"));
+                    safe.SetColor("_Color", srcCol);
+                    _fovFillRenderer.material = safe;
+                }
             }
             else
             {
                 var fillMat = new Material(Shader.Find("Unlit/Color")) ?? new Material(Shader.Find("Sprites/Default"));
                 _fovFillRenderer.material = fillMat;
-                ConfigureMaterialForTransparency(_fovFillRenderer.material);
             }
-            // initialize fill mesh as empty (so fill is not visible until animated)
+
+            // renderer settings to avoid lighting/shadow/probe interactions that cause apparent fading
+            _fovFillRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _fovFillRenderer.receiveShadows = false;
+            _fovFillRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            _fovFillRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+
+            // ensure fill starts with empty geometry
             if (_fovFillFilter != null)
                 _fovFillFilter.sharedMesh = new Mesh();
-            // initially hide fill
-            _fovFillObj.SetActive(false);
-        }
 
-        private void ConfigureMaterialForTransparency(Material mat)
-        {
-            if (mat == null) return;
-            string sname = mat.shader != null ? mat.shader.name : string.Empty;
-            // try to support Standard shader transparency
-            if (sname.Contains("Standard"))
-            {
-                mat.SetFloat("_Mode", 3); // Transparent
-                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                mat.SetInt("_ZWrite", 0);
-                mat.DisableKeyword("_ALPHATEST_ON");
-                mat.EnableKeyword("_ALPHABLEND_ON");
-                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                mat.renderQueue = 3000;
-            }
+            // render on top of base FOV to avoid z-fighting
+            if (_fovMeshRenderer != null && _fovMeshRenderer.sharedMaterial != null)
+                _fovFillRenderer.material.renderQueue = Mathf.Max(3100, _fovMeshRenderer.sharedMaterial.renderQueue + 1);
+
+            _fovFillObj.SetActive(false);
         }
 
         private void UpdateFovMesh()

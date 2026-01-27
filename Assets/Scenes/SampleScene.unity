@@ -720,6 +720,7 @@ GameObject:
   - component: {fileID: 452912175}
   - component: {fileID: 452912177}
   - component: {fileID: 452912178}
+  - component: {fileID: 452912179}
   m_Layer: 0
   m_Name: Enemy_Skeleton
   m_TagString: Untagged
@@ -739,7 +740,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a5ee583c0f172b048a876893d3b15a76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _patrol: {fileID: 0}
+  _patrol: {fileID: 452912177}
+  _vision: {fileID: 452912178}
+  _animController: {fileID: 452912179}
+  _spottedCooldown: 2
+  _playerTag: Player
 --- !u!4 &452912176
 Transform:
   m_ObjectHideFlags: 0
@@ -775,9 +780,6 @@ MonoBehaviour:
   _arriveThreshold: 0.1
   _waitAtPoint: 0.25
   _faceMovementDirection: 1
-  _animator: {fileID: 2145607433266564493}
-  _animSpeedParam: Speed
-  _animDampTime: 0.1
 --- !u!114 &452912178
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -806,6 +808,27 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   _scanInterval: 0.15
+  _useTagFilter: 1
+  _targetTag: Player
+  _instantFillDistance: 2
+--- !u!114 &452912179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 452912174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9536d6a0c0b3264c89ea91d546e07d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _animator: {fileID: 2145607433266564493}
+  _speedParam: Speed
+  _speedDamp: 0.1
+  _spottedBool: IsSpotted
+  _spottedStateName: Spotted
+  _idleStateName: Idle
 --- !u!1 &459078119
 GameObject:
   m_ObjectHideFlags: 3
@@ -4984,6 +5007,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4526454373781258966, guid: 118d1132d54f39749bfae95a3d518d1b,
+        type: 3}
+      propertyPath: m_TagString
+      value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 5334633462844668185, guid: 118d1132d54f39749bfae95a3d518d1b,
         type: 3}

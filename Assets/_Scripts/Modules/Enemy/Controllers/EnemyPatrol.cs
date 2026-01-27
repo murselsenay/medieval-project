@@ -22,10 +22,7 @@ namespace Modules.Enemy.Controllers
         [SerializeField] private float _waitAtPoint = 0.25f;
         [SerializeField] private bool _faceMovementDirection = true;
 
-        [Header("Animation")]
-        [SerializeField] private Animator _animator;
-        [SerializeField] private string _animSpeedParam = "Speed";
-        [SerializeField] private float _animDampTime = 0.1f;
+        // Patrol only reports normalized speed via EventManager; animation handled by EnemyAnimationController via EnemyController
 
         private List<Transform> _targets = new List<Transform>();
         private int _currentIndex = 0;
@@ -43,11 +40,7 @@ namespace Modules.Enemy.Controllers
                 _navAgent = GetComponent<NavMeshAgent>();
         }
 
-        private void Start()
-        {
-            if (_animator == null)
-                _animator = GetComponentInChildren<Animator>();
-        }
+        // Start does not manage animator directly anymore
 
         public void StartPatrol()
         {
@@ -59,8 +52,24 @@ namespace Modules.Enemy.Controllers
         {
             if (_patrolCoroutine != null) StopCoroutine(_patrolCoroutine);
             _patrolCoroutine = null;
-            if (_navAgent != null) _navAgent.isStopped = true;
+            if (_navAgent != null)
+            {
+                _navAgent.isStopped = true;
+                // clear path and zero velocity to avoid sliding
+                _navAgent.ResetPath();
+                try { _navAgent.velocity = Vector3.zero; } catch { }
+            }
+
+            // also clear physics velocity if present
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
+
+        // patrol only reports movement speed via EventManager; animation toggles are handled by EnemyAnimationController
 
         private void BuildTargetList()
         {
@@ -116,18 +125,16 @@ namespace Modules.Enemy.Controllers
                         _navAgent.transform.rotation = Quaternion.Slerp(_navAgent.transform.rotation, look, 10f * Time.deltaTime);
                     }
 
-                    if (_animator != null)
                     {
                         float normalized = Mathf.Clamp01(vel.magnitude / Mathf.Max(0.0001f, _navAgent.speed));
-                        _animator.SetFloat(_animSpeedParam, normalized, _animDampTime, Time.deltaTime);
+                        Modules.EventSystem.Managers.EventManager.DelegateEnemySetSpeed(transform, normalized);
                     }
 
                     yield return null;
                 }
 
                 _navAgent.isStopped = true;
-                if (_animator != null)
-                    _animator.SetFloat(_animSpeedParam, 0f, _animDampTime, Time.deltaTime);
+                Modules.EventSystem.Managers.EventManager.DelegateEnemySetSpeed(transform, 0f);
 
                 yield return new WaitForSeconds(_waitAtPoint);
 

@@ -20,6 +20,10 @@ namespace Modules.EventSystem.Managers
         public static event Action<Vector3, float> OnMoveInput; // direction (world XZ), magnitude [0..1]
         public static event Action OnMoveStarted;
         public static event Action OnMoveEnded;
+        // Enemy animation / control events
+        public static event Action<Transform, float> OnEnemySetSpeed; // enemy transform, normalized speed 0..1
+        public static event Action<Transform> OnEnemySpotted; // enemy transform
+        public static event Action<Transform> OnEnemySpottedCleared; // enemy transform
         #endregion
 
         #region Methods
@@ -100,6 +104,33 @@ namespace Modules.EventSystem.Managers
             try
             {
                 OnMoveEnded?.Invoke();
+            }
+            catch { }
+        }
+
+        public static void DelegateEnemySetSpeed(Transform enemy, float normalized)
+        {
+            try
+            {
+                OnEnemySetSpeed?.Invoke(enemy, normalized);
+            }
+            catch { }
+        }
+
+        public static void DelegateEnemySpotted(Transform enemy)
+        {
+            try
+            {
+                OnEnemySpotted?.Invoke(enemy);
+            }
+            catch { }
+        }
+
+        public static void DelegateEnemySpottedCleared(Transform enemy)
+        {
+            try
+            {
+                OnEnemySpottedCleared?.Invoke(enemy);
             }
             catch { }
         }
