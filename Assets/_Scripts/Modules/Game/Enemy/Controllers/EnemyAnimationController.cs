@@ -1,15 +1,10 @@
 using System.Collections;
+using Modules.EventSystem.Managers;
+using Modules.Logger;
 using UnityEngine;
 
-namespace Modules.Enemy.Controllers
+namespace Modules.Game.Enemy.Controllers
 {
-    /// <summary>
-    /// Central animation controller for an enemy.
-    /// Single responsibility: talk only to Animator and expose simple methods for other systems.
-    /// - Set movement speed (normalized 0..1)
-    /// - Force set speed zero
-    /// - Trigger / monitor spotted state via a bool parameter
-    /// </summary>
     [DisallowMultipleComponent]
     public class EnemyAnimationController : MonoBehaviour
     {
@@ -24,17 +19,12 @@ namespace Modules.Enemy.Controllers
         [SerializeField] private string _idleStateName = "Idle";
 
         private bool _movementUpdatesEnabled = true;
-        private Coroutine _monitorCoroutine;
         private bool _isSpottedPlaying = false;
 
-        private void Awake()
-        {
-            if (_animator == null) _animator = GetComponentInChildren<Animator>();
-        }
+        private Coroutine _monitorCoroutine;
 
         public void SetMovementSpeed(float normalized)
         {
-            if (_animator == null) return;
             if (!_movementUpdatesEnabled) return;
             _animator.SetFloat(_speedParam, Mathf.Clamp01(normalized), _speedDamp, Time.deltaTime);
         }
@@ -47,18 +37,17 @@ namespace Modules.Enemy.Controllers
 
         public void ForceSetSpeedZero()
         {
-            if (_animator == null) return;
             _animator.SetFloat(_speedParam, 0f);
         }
 
         public void TriggerSpotted()
         {
-            if (_animator == null || string.IsNullOrEmpty(_spottedBool) || _isSpottedPlaying) return;
+            if (string.IsNullOrEmpty(_spottedBool) || _isSpottedPlaying) return;
             _isSpottedPlaying = true;
-            Debug.Log($"[EnemyAnimationController] TriggerSpotted on '{name}'");
-            // set bool true and force-play spotted state to avoid AnyState re-entry
+            DebugLogger.Log($"[EnemyAnimationController] TriggerSpotted on '{name}'");
+
             _animator.SetBool(_spottedBool, true);
-            // try to immediately play the spotted state on layer 0
+
             int layer = 0;
             try
             {
@@ -67,16 +56,13 @@ namespace Modules.Enemy.Controllers
             catch { }
             if (_monitorCoroutine != null) StopCoroutine(_monitorCoroutine);
             _monitorCoroutine = StartCoroutine(MonitorSpottedState());
-            // notify global event
-            try { Modules.EventSystem.Managers.EventManager.DelegateEnemySpotted(transform); } catch { }
-            // also temporarily subscribe to block external speed updates for a short window
-            Modules.EventSystem.Managers.EventManager.OnEnemySetSpeed += TempBlockSpeed;
+            try { EventManager.DelegateEnemySpotted(transform); } catch { }
+            EventManager.OnEnemySetSpeed += TempBlockSpeed;
         }
 
         private void TempBlockSpeed(Transform enemy, float speed)
         {
             if (enemy != transform) return;
-            // swallow external speed updates while spotted plays
         }
 
         public void ClearSpotted()
@@ -88,7 +74,6 @@ namespace Modules.Enemy.Controllers
                 StopCoroutine(_monitorCoroutine);
                 _monitorCoroutine = null;
             }
-            // ensure movement updates are re-enabled after manual clear
             EnableMovementUpdates(true);
         }
 
@@ -97,9 +82,8 @@ namespace Modules.Enemy.Controllers
             if (_animator == null) yield break;
             int layer = 0;
 
-            Debug.Log($"[EnemyAnimationController] MonitorSpottedState start for '{name}'");
+            DebugLogger.Log($"[EnemyAnimationController] MonitorSpottedState start for '{name}'");
 
-            // wait up to 1s for the animator to transition into the spotted state
             float timeout = 1f;
             float t = 0f;
             while (t < timeout)
@@ -110,26 +94,24 @@ namespace Modules.Enemy.Controllers
                 yield return null;
             }
 
-            // wait until the state has played once (normalizedTime >= 1)
             while (true)
             {
                 var info = _animator.GetCurrentAnimatorStateInfo(layer);
-                if (!info.IsName(_spottedStateName)) break; // left state
-                if (info.normalizedTime >= 1f) break; // finished playback
+                if (!info.IsName(_spottedStateName)) break;
+                if (info.normalizedTime >= 1f) break;
+
                 yield return null;
             }
 
-            // clear flag so animator can transit back
-            Debug.Log($"[EnemyAnimationController] MonitorSpottedState end for '{name}' - clearing spotted");
+            DebugLogger.Log($"[EnemyAnimationController] MonitorSpottedState end for '{name}' - clearing spotted");
             _animator.SetBool(_spottedBool, false);
-            // ensure animator speed is zero and force idle to avoid blend-tree resuming walk
+
             try
             {
                 ForceSetSpeedZero();
                 if (!string.IsNullOrEmpty(_idleStateName))
                 {
                     _animator.Play(_idleStateName, layer, 0f);
-                    // force update one frame to apply
                     _animator.Update(0f);
                 }
             }
@@ -137,10 +119,8 @@ namespace Modules.Enemy.Controllers
 
             _isSpottedPlaying = false;
             _monitorCoroutine = null;
-            // notify global event cleared
-            try { Modules.EventSystem.Managers.EventManager.DelegateEnemySpottedCleared(transform); } catch { }
-            // remove temporary speed blocker
-            Modules.EventSystem.Managers.EventManager.OnEnemySetSpeed -= TempBlockSpeed;
+            try { EventManager.DelegateEnemySpottedCleared(transform); } catch { }
+            EventManager.OnEnemySetSpeed -= TempBlockSpeed;
         }
     }
 }

@@ -1,10 +1,8 @@
-using Modules.Logger;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.EventSystems;
 using System.Collections;
 
-namespace Modules.Character.Input.Controllers
+namespace Modules.Game.Character.Input.Controllers
 {
     [RequireComponent(typeof(NavMeshAgent))]
     public class MovementController : MonoBehaviour
@@ -60,18 +58,7 @@ namespace Modules.Character.Input.Controllers
         private Vector3[] _pathPositions = new Vector3[0];
         private Coroutine _pathFollowCoroutine;
 
-        private void Awake()
-        {
-            if (_agent == null)
-                _agent = GetComponent<NavMeshAgent>();
-
-            if (_agent == null)
-            {
-                DebugLogger.LogError($"NavMeshAgent not found on '{name}'. MovementController will be disabled.");
-                enabled = false;
-                return;
-            }
-        }
+        private void Awake() { }
 
         private void Update()
         {
@@ -88,7 +75,7 @@ namespace Modules.Character.Input.Controllers
             if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
                 return;
 
-            // On mouse down: set destination and begin hold-to-run detection
+            
             if (UnityEngine.Input.GetMouseButtonDown(0))
             {
                 Ray ray = cam.ScreenPointToRay(UnityEngine.Input.mousePosition);
@@ -96,10 +83,10 @@ namespace Modules.Character.Input.Controllers
                 {
                         if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 1.0f, NavMesh.AllAreas))
                         {
-                            // Click registered — compute destination
+                            
                             _currentDestination = navHit.position;
 
-                            // calculate path immediately for an instant visual (agent.path may not be ready yet)
+                            
                             if (_showPath)
                             {
                                 UpdatePathImmediate(_currentDestination);
@@ -108,14 +95,14 @@ namespace Modules.Character.Input.Controllers
                             _agent.SetDestination(_currentDestination);
                             _hasDestination = true;
 
-                            // start with walk speed
+                            
                             SetAgentSpeed(_walkSpeed);
 
-                            // start hold detection
+                            
                             if (_holdCoroutine != null) StopCoroutine(_holdCoroutine);
                             _holdCoroutine = StartCoroutine(HoldToRunCoroutine());
 
-                            // update path visual once now and start follow-updater to shorten it as agent moves
+                            
                             if (_showPath)
                             {
                                 UpdatePathImmediate(_currentDestination);
@@ -123,16 +110,13 @@ namespace Modules.Character.Input.Controllers
                                 _pathFollowCoroutine = StartCoroutine(PathFollowCoroutine());
                             }
 
-                            // spawn or move the target visual to clicked spot
-                            if (_targetMarker != null)
-                            {
-                                SpawnOrMoveTarget(_currentDestination);
-                            }
+                            
+                            SpawnOrMoveTarget(_currentDestination);
                         }
                 }
             }
 
-            // On mouse up: stop hold detection and ensure walk speed
+            
             if (UnityEngine.Input.GetMouseButtonUp(0))
             {
                 if (_holdCoroutine != null)
@@ -145,7 +129,7 @@ namespace Modules.Character.Input.Controllers
             }
         }
 
-        private System.Collections.IEnumerator HoldToRunCoroutine()
+        private IEnumerator HoldToRunCoroutine()
         {
             float t = 0f;
             while (UnityEngine.Input.GetMouseButton(0))
@@ -159,16 +143,14 @@ namespace Modules.Character.Input.Controllers
                 }
                 yield return null;
             }
-            // released before threshold
+            
             SetAgentSpeed(_walkSpeed);
             _isRunning = false;
         }
 
         private void SetAgentSpeed(float speed)
         {
-            if (_agent != null)
-                _agent.speed = speed;
-            // keep running state in sync with actual movement speed
+            _agent.speed = speed;
             _isRunning = speed > (_walkSpeed + 0.01f);
         }
 
@@ -191,27 +173,20 @@ namespace Modules.Character.Input.Controllers
 
         private void UpdateAnimator()
         {
-            if (_animator == null) return;
             float speed = _agent.velocity.magnitude;
             _animator.SetFloat(_animSpeedParam, speed);
         }
 
         private void OnDrawGizmosSelected()
         {
-            if (_agent != null)
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(_agent.transform.position, 0.1f);
+            if (_hasDestination)
             {
-                Gizmos.color = Color.green;
-                Gizmos.DrawWireSphere(_agent.transform.position, 0.1f);
-                if (_hasDestination)
-                {
-                    Gizmos.color = Color.blue;
-                    Gizmos.DrawWireSphere(_currentDestination, 0.15f);
-                }
+                Gizmos.color = Color.blue;
+                Gizmos.DrawWireSphere(_currentDestination, 0.15f);
             }
         }
-
-        // Previous continuous update coroutine removed for performance.
-        // We now update the path only when a new destination is set (UpdatePathImmediate).
 
         private void DrawPath(Vector3[] corners)
         {
@@ -228,7 +203,6 @@ namespace Modules.Character.Input.Controllers
             if (_pathPositions == null || _pathPositions.Length != corners.Length)
                 _pathPositions = new Vector3[corners.Length];
 
-            // Ensure path starts from the agent's current position to avoid starting at previous endpoint
             Vector3 agentPos = _agent != null ? _agent.transform.position : Vector3.zero;
             for (int i = 0; i < corners.Length; i++)
             {
@@ -261,7 +235,6 @@ namespace Modules.Character.Input.Controllers
                 }
                 mat.mainTexture = _dashTexture;
                 _pathLine.textureMode = LineTextureMode.Tile;
-                // scale texture tiling so dash length roughly equals _dashTextureScale units
                 mat.mainTextureScale = new Vector2(_dashTextureScale, 1f);
             }
             _pathLine.enabled = true;
@@ -279,7 +252,6 @@ namespace Modules.Character.Input.Controllers
             }
             else
             {
-                // fallback to simple two-point line
                 if (_pathLine == null) return;
                 _pathPositions = new Vector3[2];
                 Vector3 a = _agent.transform.position; a.y += _pathYOffset;
@@ -295,7 +267,6 @@ namespace Modules.Character.Input.Controllers
         {
             if (!_showPath || _pathLine == null) return;
 
-            // ensure material exists
             var mat = _pathLine.sharedMaterial;
             if (mat == null)
             {
@@ -304,17 +275,15 @@ namespace Modules.Character.Input.Controllers
                 _pathLine.sharedMaterial = mat;
             }
 
-            // color and width — set both material and LineRenderer gradient to ensure visibility across shaders
             _pathLine.startWidth = _pathWidth;
             _pathLine.endWidth = _pathWidth;
-            // apply color to LineRenderer gradient
+
             var g = new Gradient();
             g.SetKeys(
                 new GradientColorKey[] { new GradientColorKey(_pathColor, 0f), new GradientColorKey(_pathColor, 1f) },
                 new GradientAlphaKey[] { new GradientAlphaKey(_pathColor.a, 0f), new GradientAlphaKey(_pathColor.a, 1f) }
             );
             _pathLine.colorGradient = g;
-            // also set material color properties commonly used by shaders
             mat.color = _pathColor;
             mat.SetColor("_Color", _pathColor);
             mat.SetColor("_BaseColor", _pathColor);
@@ -323,14 +292,12 @@ namespace Modules.Character.Input.Controllers
             _pathLine.alignment = LineAlignment.View;
             _pathLine.loop = false;
 
-            // dashed texture handling
             _pathLine.useWorldSpace = true;
             _pathLine.alignment = LineAlignment.View;
             if (_useDashTexture)
             {
                 if (_dashTexture == null)
                 {
-                    // create a small repeatable dash texture if none provided
                     _dashTexture = CreateDashTexture(64, 4, 8, 8, Color.white);
                 }
 
@@ -340,8 +307,7 @@ namespace Modules.Character.Input.Controllers
                     _dashTexture.filterMode = FilterMode.Bilinear;
                     mat.mainTexture = _dashTexture;
                     _pathLine.textureMode = LineTextureMode.Tile;
-                    // texture scale controls how many repeats across the line length; user can tweak
-                    // If pathLength provided, set tiling so that each dash texture covers approximately _dashTextureScale world units
+
                     if (pathLength > 0f && _dashTextureScale > 0f)
                     {
                         float repeats = Mathf.Max(1f, pathLength / _dashTextureScale);
@@ -358,7 +324,6 @@ namespace Modules.Character.Input.Controllers
                 _pathLine.textureMode = LineTextureMode.Stretch;
             }
 
-            // rendering settings
             var rendererComp = _pathLine.GetComponent<Renderer>();
             if (rendererComp != null)
             {
@@ -366,7 +331,6 @@ namespace Modules.Character.Input.Controllers
                 rendererComp.receiveShadows = false;
             }
 
-            // ensure GameObject active
             if (!_pathLine.gameObject.activeInHierarchy) _pathLine.gameObject.SetActive(true);
             _pathLine.enabled = true;
         }
@@ -413,12 +377,6 @@ namespace Modules.Character.Input.Controllers
 
         private void SpawnOrMoveTarget(Vector3 worldPos)
         {
-            if (_targetMarker == null)
-            {
-                DebugLogger.LogWarning("MovementController: No _targetMarker assigned in inspector. Assign a scene marker to visualize clicks.");
-                return;
-            }
-
             _activeTarget = _targetMarker;
             _activeTarget.transform.position = worldPos + Vector3.up * _targetYOffset;
             _activeTarget.SetActive(true);

@@ -743,8 +743,8 @@ MonoBehaviour:
   _patrol: {fileID: 452912177}
   _vision: {fileID: 452912178}
   _animController: {fileID: 452912179}
+  _navAgent: {fileID: 2145607433266564494}
   _spottedCooldown: 2
-  _playerTag: Player
 --- !u!4 &452912176
 Transform:
   m_ObjectHideFlags: 0
@@ -776,6 +776,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _targetsParent: {fileID: 1731658785}
   _navAgent: {fileID: 2145607433266564494}
+  _rigidBody: {fileID: 2145607433266564495}
   _moveSpeed: 1
   _arriveThreshold: 0.1
   _waitAtPoint: 0.25
@@ -809,7 +810,6 @@ MonoBehaviour:
     m_Bits: 0
   _scanInterval: 0.15
   _useTagFilter: 1
-  _targetTag: Player
   _instantFillDistance: 2
 --- !u!114 &452912179
 MonoBehaviour:
@@ -4524,6 +4524,7 @@ GameObject:
   - component: {fileID: 2145607433266564492}
   - component: {fileID: 2145607433266564493}
   - component: {fileID: 2145607433266564494}
+  - component: {fileID: 2145607433266564495}
   m_Layer: 0
   m_Name: Enemy_Skeleton
   m_TagString: Untagged
@@ -4591,6 +4592,33 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!54 &2145607433266564495
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1625071842957645622}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!4 &2207355363131985811
 Transform:
   m_ObjectHideFlags: 0

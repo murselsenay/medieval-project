@@ -1,20 +1,19 @@
 using System.Collections;
 using System.Collections.Generic;
+using Modules.EventSystem.Managers;
+using Modules.Logger;
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Modules.Enemy.Controllers
+namespace Modules.Game.Enemy.Controllers
 {
-    /// <summary>
-    /// Patrol behaviour moved out of EnemyController.
-    /// Controls NavMeshAgent-based movement between child waypoints of a provided parent.
-    /// </summary>
     [DisallowMultipleComponent]
     public class EnemyPatrol : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private Transform _targetsParent;
         [SerializeField] private NavMeshAgent _navAgent;
+        [SerializeField] private Rigidbody _rigidBody;
 
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 3f;
@@ -22,25 +21,16 @@ namespace Modules.Enemy.Controllers
         [SerializeField] private float _waitAtPoint = 0.25f;
         [SerializeField] private bool _faceMovementDirection = true;
 
-        // Patrol only reports normalized speed via EventManager; animation handled by EnemyAnimationController via EnemyController
-
         private List<Transform> _targets = new List<Transform>();
         private int _currentIndex = 0;
         private int _step = 1;
+
         private Coroutine _patrolCoroutine;
 
         private void Awake()
         {
             BuildTargetList();
         }
-
-        private void OnEnable()
-        {
-            if (_navAgent == null)
-                _navAgent = GetComponent<NavMeshAgent>();
-        }
-
-        // Start does not manage animator directly anymore
 
         public void StartPatrol()
         {
@@ -52,24 +42,14 @@ namespace Modules.Enemy.Controllers
         {
             if (_patrolCoroutine != null) StopCoroutine(_patrolCoroutine);
             _patrolCoroutine = null;
-            if (_navAgent != null)
-            {
-                _navAgent.isStopped = true;
-                // clear path and zero velocity to avoid sliding
-                _navAgent.ResetPath();
-                try { _navAgent.velocity = Vector3.zero; } catch { }
-            }
 
-            // also clear physics velocity if present
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
+            _navAgent.isStopped = true;
+            _navAgent.ResetPath();
+            try { _navAgent.velocity = Vector3.zero; } catch { }
+
+            _rigidBody.velocity = Vector3.zero;
+            _rigidBody.angularVelocity = Vector3.zero;
         }
-
-        // patrol only reports movement speed via EventManager; animation toggles are handled by EnemyAnimationController
 
         private void BuildTargetList()
         {
@@ -100,12 +80,8 @@ namespace Modules.Enemy.Controllers
 
                 if (_navAgent == null)
                 {
-                    _navAgent = GetComponent<NavMeshAgent>();
-                    if (_navAgent == null)
-                    {
-                        Debug.LogWarning($"EnemyPatrol on '{name}' requires a NavMeshAgent.");
-                        yield break;
-                    }
+                    DebugLogger.LogWarning($"EnemyPatrol on '{name}' requires a NavMeshAgent.");
+                    yield break;
                 }
 
                 _navAgent.isStopped = false;
@@ -127,19 +103,18 @@ namespace Modules.Enemy.Controllers
 
                     {
                         float normalized = Mathf.Clamp01(vel.magnitude / Mathf.Max(0.0001f, _navAgent.speed));
-                        Modules.EventSystem.Managers.EventManager.DelegateEnemySetSpeed(transform, normalized);
+                        EventManager.DelegateEnemySetSpeed(transform, normalized);
                     }
 
                     yield return null;
                 }
 
                 _navAgent.isStopped = true;
-                Modules.EventSystem.Managers.EventManager.DelegateEnemySetSpeed(transform, 0f);
+                EventManager.DelegateEnemySetSpeed(transform, 0f);
 
                 yield return new WaitForSeconds(_waitAtPoint);
 
-                if (_navAgent != null)
-                    _navAgent.ResetPath();
+                _navAgent.ResetPath();
 
                 if (_targets.Count > 1)
                 {
