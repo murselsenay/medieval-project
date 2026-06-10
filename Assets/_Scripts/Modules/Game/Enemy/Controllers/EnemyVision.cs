@@ -9,12 +9,12 @@ namespace Modules.Game.Enemy.Controllers
     [DisallowMultipleComponent]
     public class EnemyVision : MonoBehaviour
     {
-        [Header("FOV")]
+        [BHeader("FOV")]
         [SerializeField] private float _viewAngle = 45f;
         [Tooltip("Maximum view distance")]
         [SerializeField] private float _viewDistance = 10f;
         [SerializeField] private Transform _viewOrigin;
-        [Header("Debug Draw")]
+        [BHeader("Debug Draw")]
         [SerializeField] private bool _showFovMesh = true;
         [SerializeField, Range(8, 128)] private int _fovSegments = 64;
         [SerializeField] private Material _fovMaterial;
@@ -22,13 +22,13 @@ namespace Modules.Game.Enemy.Controllers
         [SerializeField] private float _fillDuration = 1.5f;
         [SerializeField] private bool _debugStartFill = false;
 
-        [Header("Detection")]
+        [BHeader("Detection")]
         [SerializeField] private LayerMask _targetMask = ~0;
         [SerializeField] private LayerMask _obstacleMask = 0;
         [SerializeField] private float _scanInterval = 0.15f;
-        [Header("Target Filter")]
+        [BHeader("Target Filter")]
         [SerializeField] private bool _useTagFilter = true;
-        [Header("Instant Fill")]
+        [BHeader("Instant Fill")]
         [Tooltip("If target is this close (world units) the fill completes instantly and triggers spotted.")]
         [SerializeField] private float _instantFillDistance = 1.5f;
 

@@ -10,6 +10,7 @@ namespace Modules.Game.Enemy.Controllers
     [DisallowMultipleComponent]
     public class EnemyController : MonoBehaviour
     {
+        [BHeader("Patrol")]
         [SerializeField] private EnemyPatrol _patrol;
         [BHeader("Vision")]
         [SerializeField] private EnemyVision _vision;

@@ -2,15 +2,15 @@ using UnityEngine;
 using UnityEngine.AI;
 using System.Collections;
 
-namespace Modules.Game.Character.Input.Controllers
+namespace Modules.Game.Character.Controllers
 {
     [RequireComponent(typeof(NavMeshAgent))]
-    public class MovementController : MonoBehaviour
+    public class CharacterMovementController : MonoBehaviour
     {
-        [Header("References")]
+        [BHeader("References")]
         [SerializeField] private NavMeshAgent _agent;
 
-        [Header("Movement")]
+        [BHeader("Movement")]
         [SerializeField] private float _rotationSmoothTime = 0.12f;
         [SerializeField] private float _stopThreshold = 0.1f;
         [SerializeField] private LayerMask _clickableLayers = ~0;
@@ -20,29 +20,26 @@ namespace Modules.Game.Character.Input.Controllers
 
         private Coroutine _holdCoroutine;
 
-        [Header("Animation")]
-        [SerializeField] private Animator _animator;
-        [SerializeField] private string _animSpeedParam = "Speed";
+
 
         private float _rotationVelocity;
         private Vector3 _currentDestination;
         private bool _hasDestination;
-        
-        [Header("Path Visual")]
+
+        [BHeader("Path Visual")]
         [SerializeField] private bool _showPath = true;
         [SerializeField] private LineRenderer _pathLine;
         [SerializeField] private Color _pathColor = Color.cyan;
         [SerializeField] private float _pathWidth = 0.12f;
         [SerializeField] private bool _overrideLineWidth = false;
         [SerializeField] private float _pathYOffset = 0.05f;
+        [BHeader("Dash Visual")]
         [SerializeField] private bool _useDashTexture = false;
-
-        private Texture2D _dashTexture;
         [SerializeField] private float _dashTextureScale = 1f;
         [SerializeField] private float _pathFollowInterval = 0.12f;
         [SerializeField] private float _pathTrimThreshold = 0.5f;
-        
-        [Header("Target Visual")]
+
+        [BHeader("Target Visual")]
         [SerializeField] private GameObject _targetMarker;
         [SerializeField] private float _targetYOffset = 0.05f;
         [SerializeField] private float _targetPulseMin = 0.8f;
@@ -51,6 +48,7 @@ namespace Modules.Game.Character.Input.Controllers
         [SerializeField] private float _targetPulseRunMultiplier = 1.6f;
         [SerializeField] private float _targetPulseWalkMultiplier = 1f;
 
+        private Texture2D _dashTexture;
         private GameObject _activeTarget;
         private Coroutine _targetPulseCoroutine;
         private bool _isRunning = false;
@@ -75,48 +73,49 @@ namespace Modules.Game.Character.Input.Controllers
             if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
                 return;
 
-            
+
             if (UnityEngine.Input.GetMouseButtonDown(0))
             {
                 Ray ray = cam.ScreenPointToRay(UnityEngine.Input.mousePosition);
                 if (Physics.Raycast(ray, out RaycastHit hit, 100f, _clickableLayers, QueryTriggerInteraction.Ignore))
                 {
-                        if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 1.0f, NavMesh.AllAreas))
+                    if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 1.0f, NavMesh.AllAreas))
+                    {
+
+                        _currentDestination = navHit.position;
+
+
+                        if (_showPath)
                         {
-                            
-                            _currentDestination = navHit.position;
-
-                            
-                            if (_showPath)
-                            {
-                                UpdatePathImmediate(_currentDestination);
-                            }
-
-                            _agent.SetDestination(_currentDestination);
-                            _hasDestination = true;
-
-                            
-                            SetAgentSpeed(_walkSpeed);
-
-                            
-                            if (_holdCoroutine != null) StopCoroutine(_holdCoroutine);
-                            _holdCoroutine = StartCoroutine(HoldToRunCoroutine());
-
-                            
-                            if (_showPath)
-                            {
-                                UpdatePathImmediate(_currentDestination);
-                                if (_pathFollowCoroutine != null) StopCoroutine(_pathFollowCoroutine);
-                                _pathFollowCoroutine = StartCoroutine(PathFollowCoroutine());
-                            }
-
-                            
-                            SpawnOrMoveTarget(_currentDestination);
+                            UpdatePathImmediate(_currentDestination);
                         }
+
+                        _agent.SetDestination(_currentDestination);
+                        _hasDestination = true;
+
+                        SetAgentSpeed(_walkSpeed);
+
+                        Modules.EventSystem.Managers.EventManager.DelegateCharacterDestinationSet(transform, _currentDestination);
+
+
+                        if (_holdCoroutine != null) StopCoroutine(_holdCoroutine);
+                        _holdCoroutine = StartCoroutine(HoldToRunCoroutine());
+
+
+                        if (_showPath)
+                        {
+                            UpdatePathImmediate(_currentDestination);
+                            if (_pathFollowCoroutine != null) StopCoroutine(_pathFollowCoroutine);
+                            _pathFollowCoroutine = StartCoroutine(PathFollowCoroutine());
+                        }
+
+
+                        SpawnOrMoveTarget(_currentDestination);
+                    }
                 }
             }
 
-            
+
             if (UnityEngine.Input.GetMouseButtonUp(0))
             {
                 if (_holdCoroutine != null)
@@ -126,6 +125,7 @@ namespace Modules.Game.Character.Input.Controllers
                 }
                 SetAgentSpeed(_walkSpeed);
                 _isRunning = false;
+                Modules.EventSystem.Managers.EventManager.DelegateCharacterRunStopped(transform);
             }
         }
 
@@ -138,20 +138,26 @@ namespace Modules.Game.Character.Input.Controllers
                 if (t >= _holdToRunThreshold)
                 {
                     SetAgentSpeed(_runSpeed);
-                    _isRunning = true;
+                    Modules.EventSystem.Managers.EventManager.DelegateCharacterRunStarted(transform);
                     yield break;
                 }
                 yield return null;
             }
-            
+
             SetAgentSpeed(_walkSpeed);
-            _isRunning = false;
+            Modules.EventSystem.Managers.EventManager.DelegateCharacterRunStopped(transform);
         }
 
         private void SetAgentSpeed(float speed)
         {
+            bool wasRunning = _isRunning;
             _agent.speed = speed;
             _isRunning = speed > (_walkSpeed + 0.01f);
+            if (wasRunning != _isRunning)
+            {
+                if (_isRunning) Modules.EventSystem.Managers.EventManager.DelegateCharacterRunStarted(transform);
+                else Modules.EventSystem.Managers.EventManager.DelegateCharacterRunStopped(transform);
+            }
         }
 
         private void UpdateRotation()
@@ -174,7 +180,7 @@ namespace Modules.Game.Character.Input.Controllers
         private void UpdateAnimator()
         {
             float speed = _agent.velocity.magnitude;
-            _animator.SetFloat(_animSpeedParam, speed);
+            Modules.EventSystem.Managers.EventManager.DelegateCharacterSetSpeed(transform, speed);
         }
 
         private void OnDrawGizmosSelected()
@@ -365,7 +371,6 @@ namespace Modules.Game.Character.Input.Controllers
                 _pathFollowCoroutine = null;
             }
 
-            // destroy target if any
             if (_activeTarget != null)
             {
                 if (_targetPulseCoroutine != null) StopCoroutine(_targetPulseCoroutine);
@@ -400,10 +405,8 @@ namespace Modules.Game.Character.Input.Controllers
 
         private System.Collections.IEnumerator PathFollowCoroutine()
         {
-            // Continuously recalculate a lightweight path at intervals and redraw the visual from the agent position.
             while (_pathLine != null && _agent != null)
             {
-                // compute path from current agent position to current destination
                 NavMeshPath calc = new NavMeshPath();
                 bool ok = NavMesh.CalculatePath(_agent.transform.position, _currentDestination, NavMesh.AllAreas, calc);
                 if (ok && calc.corners != null && calc.corners.Length >= 2)
@@ -414,7 +417,7 @@ namespace Modules.Game.Character.Input.Controllers
                     for (int i = 0; i < len; i++)
                     {
                         Vector3 p = calc.corners[i];
-                        if (i == 0) p = agentPos; // start from current agent pos for visual consistency
+                        if (i == 0) p = agentPos;
                         p.y += _pathYOffset;
                         _pathPositions[i] = p;
                     }
@@ -425,7 +428,6 @@ namespace Modules.Game.Character.Input.Controllers
                 }
                 else
                 {
-                    // no valid path — clear and wait
                     ClearPathVisual();
                 }
 

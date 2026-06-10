@@ -10,12 +10,12 @@ namespace Modules.Game.Enemy.Controllers
     [DisallowMultipleComponent]
     public class EnemyPatrol : MonoBehaviour
     {
-        [Header("References")]
+        [BHeader("References")]
         [SerializeField] private Transform _targetsParent;
         [SerializeField] private NavMeshAgent _navAgent;
         [SerializeField] private Rigidbody _rigidBody;
 
-        [Header("Movement")]
+        [BHeader("Movement")]
         [SerializeField] private float _moveSpeed = 3f;
         [SerializeField] private float _arriveThreshold = 0.1f;
         [SerializeField] private float _waitAtPoint = 0.25f;

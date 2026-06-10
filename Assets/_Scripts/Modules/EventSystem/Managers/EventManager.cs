@@ -2,6 +2,7 @@ using UnityEngine;
 using Modules.Economy.Enums;
 using Modules.PopupSystem.Components;
 using System;
+using Game.Interactables.Interfaces;
 
 namespace Modules.EventSystem.Managers
 {
@@ -14,100 +15,96 @@ namespace Modules.EventSystem.Managers
         public static event Action<BasePopup> OnPopupShowed;
         public static event Action<BasePopup> OnPopupClosed;
 
-        // New timer tick event
+        // Timer
         public static event Action<long> OnTimerTick;
-        // Movement input events
-        public static event Action<Vector3, float> OnMoveInput; // direction (world XZ), magnitude [0..1]
-        public static event Action OnMoveStarted;
-        public static event Action OnMoveEnded;
         // Enemy animation / control events
-        public static event Action<Transform, float> OnEnemySetSpeed; // enemy transform, normalized speed 0..1
-        public static event Action<Transform> OnEnemySpotted; // enemy transform
-        public static event Action<Transform> OnEnemySpottedCleared; // enemy transform
+        public static event Action<Transform, float> OnEnemySetSpeed;
+        public static event Action<Transform> OnEnemySpotted;
+        public static event Action<Transform> OnEnemySpottedCleared;
+
+
+        // Character
+        public static event Action<Vector3, float> OnCharacterMoveInput;
+        public static event Action OnCharacterMoveStarted;
+        public static event Action OnCharacterMoveEnded;
+        public static event Action<Transform, float> OnCharacterSetSpeed;
+        public static event Action<Transform> OnCharacterRunStarted;
+        public static event Action<Transform> OnCharacterRunStopped;
+        public static event Action<Transform, Vector3> OnCharacterDestinationSet;
+
+        // Interaction
+        public static event Action<IInteractable> OnInteractionStarted;
+        public static event Action<IInteractable> OnInteractionEnded;
+        public static event Action<IInteractable> OnInteracted;
         #endregion
 
-        #region Methods
-        public static void DelegateSpawnCurrencyRequest(Transform spawnPoint, ECurrencyType type, int amount)
+        #region Character 
+        public static void DelegateCharacterMoveInput(Vector3 direction, float magnitude)
         {
             try
             {
-                OnSpawnCurrencyRequest?.Invoke(spawnPoint, type, amount);
+                OnCharacterMoveInput?.Invoke(direction, magnitude);
             }
             catch { }
         }
 
-        public static void DelegateCurrencyChanged(ECurrencyType type, int amount)
+        public static void DelegateCharacterMoveStarted()
         {
             try
             {
-                OnCurrencyChanged?.Invoke(type, amount);
+                OnCharacterMoveStarted?.Invoke();
             }
             catch { }
         }
 
-        public static void DelegateCurrencyRequestCompleted(ECurrencyType type)
+        public static void DelegateCharacterMoveEnded()
         {
             try
             {
-                OnCurrencyRequestCompleted?.Invoke(type);
+                OnCharacterMoveEnded?.Invoke();
             }
             catch { }
         }
 
-        public static void DelegatePopupShowed(BasePopup popup)
+        public static void DelegateCharacterSetSpeed(Transform character, float speed)
         {
             try
             {
-                OnPopupShowed?.Invoke(popup);
+                OnCharacterSetSpeed?.Invoke(character, speed);
             }
             catch { }
         }
 
-        public static void DelegatePopupClosed(BasePopup popup)
+        public static void DelegateCharacterRunStarted(Transform character)
         {
             try
             {
-                OnPopupClosed?.Invoke(popup);
+                OnCharacterRunStarted?.Invoke(character);
             }
             catch { }
         }
 
-        public static void DelegateTimerTick(long unixTime)
+        public static void DelegateCharacterRunStopped(Transform character)
         {
             try
             {
-                OnTimerTick?.Invoke(unixTime);
+                OnCharacterRunStopped?.Invoke(character);
             }
             catch { }
         }
 
-        public static void DelegateMoveInput(Vector3 direction, float magnitude)
+        public static void DelegateCharacterDestinationSet(Transform character, Vector3 dest)
         {
             try
             {
-                OnMoveInput?.Invoke(direction, magnitude);
+                OnCharacterDestinationSet?.Invoke(character, dest);
             }
             catch { }
         }
 
-        public static void DelegateMoveStarted()
-        {
-            try
-            {
-                OnMoveStarted?.Invoke();
-            }
-            catch { }
-        }
+        #endregion
 
-        public static void DelegateMoveEnded()
-        {
-            try
-            {
-                OnMoveEnded?.Invoke();
-            }
-            catch { }
-        }
-
+        #region Enemy
         public static void DelegateEnemySetSpeed(Transform enemy, float normalized)
         {
             try
@@ -135,5 +132,95 @@ namespace Modules.EventSystem.Managers
             catch { }
         }
         #endregion
+
+        #region Timer
+        public static void DelegateTimerTick(long unixTime)
+        {
+            try
+            {
+                OnTimerTick?.Invoke(unixTime);
+            }
+            catch { }
+        }
+
+        #endregion
+
+        #region Popup
+        public static void DelegatePopupShowed(BasePopup popup)
+        {
+            try
+            {
+                OnPopupShowed?.Invoke(popup);
+            }
+            catch { }
+        }
+
+        public static void DelegatePopupClosed(BasePopup popup)
+        {
+            try
+            {
+                OnPopupClosed?.Invoke(popup);
+            }
+            catch { }
+        }
+        #endregion
+
+        #region Currency
+        public static void DelegateSpawnCurrencyRequest(Transform spawnPoint, ECurrencyType type, int amount)
+        {
+            try
+            {
+                OnSpawnCurrencyRequest?.Invoke(spawnPoint, type, amount);
+            }
+            catch { }
+        }
+
+        public static void DelegateCurrencyChanged(ECurrencyType type, int amount)
+        {
+            try
+            {
+                OnCurrencyChanged?.Invoke(type, amount);
+            }
+            catch { }
+        }
+
+        public static void DelegateCurrencyRequestCompleted(ECurrencyType type)
+        {
+            try
+            {
+                OnCurrencyRequestCompleted?.Invoke(type);
+            }
+            catch { }
+        }
+        #endregion
+
+        #region Interaction
+        public static void DelegateInteractionStarted(IInteractable interactable)
+        {
+            try
+            {
+                OnInteractionStarted?.Invoke(interactable);
+            }
+            catch { }
+        }
+        public static void DelegateInteractionEnded(IInteractable interactable)
+        {
+            try
+            {
+                OnInteractionEnded?.Invoke(interactable);
+            }
+            catch { }
+        }
+        public static void DelegateInteracted(IInteractable interactable)
+        {
+            try
+            {
+                OnInteracted?.Invoke(interactable);
+            }
+            catch { }
+        }
+
+        #endregion
+
     }
 }
